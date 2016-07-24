@@ -236,7 +236,16 @@ int tsp_analyse( int fd ) {
 //returns the state of the error line of the host link connection specified by
 //Returns zero or one indicating the state of the error line on success or -1 on error.
 int tsp_error( int fd ) {
-    assert(false);
+    uint8_t buff[5];
+    int ret;
+    //read FLAGS
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    if (ret == 0) {
+        if ((buff[0] & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
+            return 1;
+        }
+    }
+    return ret;
 }
 
 //By default a raw link protocol is used in which the target attempts to input
