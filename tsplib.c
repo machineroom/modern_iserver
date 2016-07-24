@@ -28,8 +28,7 @@ int tsp_close( int fd ) {
     return close(fd);
 }
 
-void check_error(sg_io_hdr_t *io_hdr) {
-    //LS nibble is error, MS nibble is suggestion
+void dump_error (sg_io_hdr_t *io_hdr) {
     bool info_ok = true;
     bool host_ok = false;
     bool driver_ok = false;
@@ -80,6 +79,7 @@ void check_error(sg_io_hdr_t *io_hdr) {
                 printf ("unknown host status 0x%X\n", io_hdr->host_status);
                 break;
         }
+        //LS nibble is error, MS nibble is suggestion
         switch (io_hdr->driver_status & 0x0F) {
             case 0:
                 driver_ok = true;
@@ -171,13 +171,26 @@ void check_error(sg_io_hdr_t *io_hdr) {
     }
 }
 
+//take syscall (ioctl) sttaus and SG header
+//TSP lib expects calls to return 0 or -1
+int check_error(int syscall_rc, char *scsi_op, sg_io_hdr_t *io_hdr) {
+    if (syscall_rc == 0) {
+        return 0;
+    } else {
+        printf ("SCSI op %s failed\n", scsi_op);
+        dump_error(io_hdr);
+        return -1;
+    }
+}
+
+//Reset a host link connection
 int tsp_reset( int fd ) {
     unsigned char buff[5]={1,2,3,4,5};
     unsigned char cmdBlk[] =
                     {0, 0, 0, 0, sizeof(buff), 0};
     unsigned char sense_buffer[32];
     sg_io_hdr_t io_hdr;
-    int rc;
+    int rc, ret;
 
     //read 5 byte FLAGS
     cmdBlk[0] = SCMD_READ_FLAGS;
@@ -192,15 +205,10 @@ int tsp_reset( int fd ) {
     io_hdr.sbp = sense_buffer;
     io_hdr.timeout = 20000;     /* 20000 millisecs == 20 seconds */
     rc = ioctl(fd, SG_IO, &io_hdr);
-    if (rc == 0) {
-        printf ("SCMD_READ_FLAGS = %X %X %X %X %X\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
-        check_error (&io_hdr);
+    ret = check_error (rc, "SCMD_READ_FLAGS", &io_hdr);
+    if (ret == 0) {
         //write 5 byte FLAGS
         buff[0] = LFLAG_RESET_LINK | LFLAG_RESET_CONFIG | LFLAG_SUBSYSTEM_RESET;
-        buff[1] = 1;//protocol
-        buff[2] = 0;//bs
-        buff[3] = 0;//bs
-        buff[4] = 128;//bs
         cmdBlk[0] = SCMD_WRITE_FLAGS;
         memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
         io_hdr.interface_id = 'S';
@@ -213,30 +221,9 @@ int tsp_reset( int fd ) {
         io_hdr.sbp = sense_buffer;
         io_hdr.timeout = 20000;     /* 20000 millisecs == 20 seconds */
         rc = ioctl(fd, SG_IO, &io_hdr);
-        printf ("---SCMD_WRITE_FLAGS\n");
-        check_error (&io_hdr);
-        
-        //TEST read back
-        cmdBlk[0] = SCMD_READ_FLAGS;
-        memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
-        io_hdr.interface_id = 'S';
-        io_hdr.cmd_len = sizeof(cmdBlk);
-        io_hdr.mx_sb_len = sizeof(sense_buffer);
-        io_hdr.dxfer_direction = SG_DXFER_FROM_DEV;
-        io_hdr.dxfer_len = sizeof(buff);
-        io_hdr.dxferp = buff;
-        io_hdr.cmdp = cmdBlk;
-        io_hdr.sbp = sense_buffer;
-        io_hdr.timeout = 20000;     /* 20000 millisecs == 20 seconds */
-        rc = ioctl(fd, SG_IO, &io_hdr);
-        printf ("---SCMD_READ_FLAGS\n");
-        check_error (&io_hdr);
-        if (rc == 0) {
-            printf ("SCMD_READ_FLAGS = %X %X %X %X %X\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
-            printf ("SCMD_READ_FLAGS io_hdr.info = 0x%X\n", io_hdr.info);
-        }
-    }
-    return rc;
+        ret = check_error (rc, "SCMD_WRITE_FLAGS", &io_hdr);
+    } 
+    return ret;
 }
 
 int tsp_analyse( int fd ) {
