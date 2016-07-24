@@ -17,12 +17,14 @@
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
 
+#define DEFAULT_TIMEOUT (5)
+
 static void dump_error (sg_io_hdr_t *io_hdr) {
     bool info_ok = true;
     bool host_ok = false;
     bool driver_ok = false;
     if (io_hdr->info & 0x01) {
-        printf ("info = INFO_CHECK\n");
+        printf ("info = SG_INFO_CHECK\n");
         info_ok = false;
     }
     if (!info_ok) {
@@ -183,12 +185,30 @@ int tsp_close( int fd ) {
     return close(fd);
 }
 
-static int do_command(int fd, uint8_t command, char *command_name, int dir, uint8_t *buffer, unsigned int buffer_size) {
-    unsigned char cmdBlk[] = {command, 0, 0, 0, buffer_size, 0};
+static int do_command(int fd, 
+                      uint8_t command, 
+                      char *command_name, 
+                      int dir, 
+                      uint8_t *buffer, 
+                      unsigned int buffer_size, 
+                      unsigned int timeout) {
+    unsigned char cmdBlk[6];
     unsigned char sense_buffer[32];
     sg_io_hdr_t io_hdr;
     int rc, ret;
-    memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
+    memset(&cmdBlk, 0, sizeof(cmdBlk));
+    cmdBlk[0] = command;
+    cmdBlk[1] = 0;  //LUN;
+    cmdBlk[2] = (buffer_size >> 16) & 0xFF;
+    cmdBlk[3] = (buffer_size >> 8)  & 0xFF;
+    cmdBlk[4] = (buffer_size >> 0)  & 0xFF;
+    cmdBlk[5] = 0;  //unused
+    /* for verification only*/
+#if 1
+    printf ("%s cmd blk = %02X %02X %02X %02X %02X %02X\n", 
+             command_name, cmdBlk[0], cmdBlk[1], cmdBlk[2], cmdBlk[3], cmdBlk[4], cmdBlk[5]);
+#endif
+    memset(&io_hdr, 0, sizeof(io_hdr));
     io_hdr.interface_id = 'S';
     io_hdr.cmd_len = sizeof(cmdBlk);
     io_hdr.mx_sb_len = sizeof(sense_buffer);
@@ -197,7 +217,7 @@ static int do_command(int fd, uint8_t command, char *command_name, int dir, uint
     io_hdr.dxferp = buffer;
     io_hdr.cmdp = cmdBlk;
     io_hdr.sbp = sense_buffer;
-    io_hdr.timeout = 20000;     /* 20000 millisecs == 20 seconds */
+    io_hdr.timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
     rc = ioctl(fd, SG_IO, &io_hdr);
     ret = check_error (rc, command_name, &io_hdr);
     return ret;
@@ -207,7 +227,7 @@ int tsp_reset( int fd ) {
     uint8_t buff[5];
     int ret;
     //read FLAGS
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     if (ret == 0) {
         //write FLAGS
         buff[0] = LFLAG_RESET_LINK;
@@ -218,7 +238,7 @@ int tsp_reset( int fd ) {
          protocol persists until the link is reset.
         */
         buff[1] = TSP_RAW_PROTOCOL;
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     }
     return ret;
 }
@@ -227,7 +247,7 @@ int tsp_analyse( int fd ) {
     uint8_t buff[5];
     int ret;
     //read FLAGS
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     if (ret == 0) {
         //write FLAGS
         buff[0] = LFLAG_SUBSYSTEM_ANALYSE;
@@ -238,7 +258,7 @@ int tsp_analyse( int fd ) {
          protocol persists until the link is reset.
         */
         buff[1] = TSP_RAW_PROTOCOL;
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     }
     return ret;
 }
@@ -247,7 +267,7 @@ int tsp_error( int fd ) {
     uint8_t buff[5];
     int ret;
     //read FLAGS
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     if (ret == 0) {
         if ((buff[0] & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
             return 1;
@@ -261,27 +281,24 @@ int tsp_read( int fd, void *data, size_t length, int timeout ) {
 }
 
 int tsp_write( int fd, void *data, size_t length, int timeout ) {
-    assert(false);
+    int ret;
+    ret = do_command (fd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, length, timeout);
+    return ret;
 }
 
 int tsp_protocol( int fd, int protocol, int block_size ) {
     uint8_t buff[5];
     int ret;
     //read FLAGS
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     if (ret == 0) {
         //write protocol & block size
         buff[1] = protocol;
         buff[2] = (block_size >> 16) & 0xFF;
         buff[3] = (block_size >> 8)  & 0xFF;
         buff[4] = (block_size >> 0)  & 0xFF;
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff), DEFAULT_TIMEOUT);
     }
-    /* for verification only
-    uint8_t flags[5];
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, flags, sizeof(flags));
-    printf ("flags = %X %X %X %X %X\n", flags[0], flags[1], flags[2], flags[3], flags[4]);
-    */
     return ret;
 }
 

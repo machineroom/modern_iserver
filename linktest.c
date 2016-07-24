@@ -1,5 +1,6 @@
 #include <tsplib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 int main (int argc, char **argv) {
     int fd;
@@ -12,6 +13,11 @@ int main (int argc, char **argv) {
     printf ("tsp_analyse = %d\n", rc);
     rc = tsp_error(fd);
     printf ("tsp_error = %d\n", rc);
-    rc = tsp_protocol(fd, TSP_ISERVER_PROTOCOL, 4096);
+    rc = tsp_protocol(fd, TSP_RAW_PROTOCOL, 4096);
     printf ("tsp_protocol = %d\n", rc);
+    while (1) {
+        uint8_t data[] = {0,128,255,0,128,255,0,128,255,0};
+        rc = tsp_write( fd, data, 10, 2 );
+        printf ("tsp_write = %d\n", rc);
+    }
 }
