@@ -203,8 +203,6 @@ static int do_command(int fd, uint8_t command, char *command_name, int dir, uint
     return ret;
 }
 
-//Reset a host link connection
-//Returns zero on success or -1 on error.
 int tsp_reset( int fd ) {
     uint8_t buff[5];
     int ret;
@@ -213,13 +211,18 @@ int tsp_reset( int fd ) {
     if (ret == 0) {
         //write FLAGS
         buff[0] = LFLAG_RESET_LINK;
+        /*
+         The link protocol is set to raw byte mode when the host link
+         is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
+         tsp_reset_config().  After being set by tsp_protocol()  this
+         protocol persists until the link is reset.
+        */
+        buff[1] = TSP_RAW_PROTOCOL;
         ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
     }
     return ret;
 }
 
-//resets the link and (with analyse asserted) the connected devices of the host link
-//Returns zero on success or -1 on error.
 int tsp_analyse( int fd ) {
     uint8_t buff[5];
     int ret;
@@ -228,13 +231,18 @@ int tsp_analyse( int fd ) {
     if (ret == 0) {
         //write FLAGS
         buff[0] = LFLAG_SUBSYSTEM_ANALYSE;
+        /*
+         The link protocol is set to raw byte mode when the host link
+         is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
+         tsp_reset_config().  After being set by tsp_protocol()  this
+         protocol persists until the link is reset.
+        */
+        buff[1] = TSP_RAW_PROTOCOL;
         ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
     }
     return ret;
 }
 
-//returns the state of the error line of the host link connection specified by
-//Returns zero or one indicating the state of the error line on success or -1 on error.
 int tsp_error( int fd ) {
     uint8_t buff[5];
     int ret;
@@ -248,22 +256,6 @@ int tsp_error( int fd ) {
     return ret;
 }
 
-//By default a raw link protocol is used in which the target attempts to input
-//length bytes of data (in 4096 byte blocks) until a timeout occurs.
-//If iserver link protocol is used, an iserver packet of total length of up to
-//length (or 4096) bytes containing a two byte count and count bytes of data is input.
-//In block link protocol mode, an attempt is made to read a block of data of
-//length length. The link protocol and block size is set using tsp_protocol().
-//In protocol modes other than raw mode, the length of data requested must be
-//the same as the block size specified by the function tsp_protocol().
-//If a timeout occurs during a read, it is an error to subsequently request a 
-//lesser amount of data until either the original request is satisfied or 
-//until the connection is reset using tsp_reset().
-
-//data: Pointer to memory into which data is read.
-//length: The maximum amount of data to be read.
-//timeout: Timeout in seconds. Zero for no timeout.
-//Returns the number of bytes read (which may be less than that requested) on success or -1 on error.
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     assert(false);
 }
@@ -273,7 +265,24 @@ int tsp_write( int fd, void *data, size_t length, int timeout ) {
 }
 
 int tsp_protocol( int fd, int protocol, int block_size ) {
-    assert(false);
+    uint8_t buff[5];
+    int ret;
+    //read FLAGS
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    if (ret == 0) {
+        //write protocol & block size
+        buff[1] = protocol;
+        buff[2] = (block_size >> 16) & 0xFF;
+        buff[3] = (block_size >> 8)  & 0xFF;
+        buff[4] = (block_size >> 0)  & 0xFF;
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
+    }
+    /* for verification only
+    uint8_t flags[5];
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, flags, sizeof(flags));
+    printf ("flags = %X %X %X %X %X\n", flags[0], flags[1], flags[2], flags[3], flags[4]);
+    */
+    return ret;
 }
 
 int tsp_reset_config( int fd ) {

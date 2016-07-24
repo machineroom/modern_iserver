@@ -12,4 +12,6 @@ int main (int argc, char **argv) {
     printf ("tsp_analyse = %d\n", rc);
     rc = tsp_error(fd);
     printf ("tsp_error = %d\n", rc);
+    rc = tsp_protocol(fd, TSP_ISERVER_PROTOCOL, 4096);
+    printf ("tsp_protocol = %d\n", rc);
 }
