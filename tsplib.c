@@ -17,18 +17,7 @@
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
 
-/* Library function prototypes */
-int tsp_open( char *device ) {
-    int sg_fd;
-    sg_fd = open(device, O_RDWR);
-    return sg_fd;
-}
-
-int tsp_close( int fd ) {
-    return close(fd);
-}
-
-void dump_error (sg_io_hdr_t *io_hdr) {
+static void dump_error (sg_io_hdr_t *io_hdr) {
     bool info_ok = true;
     bool host_ok = false;
     bool driver_ok = false;
@@ -183,57 +172,89 @@ int check_error(int syscall_rc, char *scsi_op, sg_io_hdr_t *io_hdr) {
     }
 }
 
-//Reset a host link connection
-int tsp_reset( int fd ) {
-    unsigned char buff[5]={1,2,3,4,5};
-    unsigned char cmdBlk[] =
-                    {0, 0, 0, 0, sizeof(buff), 0};
+/* Library function prototypes */
+int tsp_open( char *device ) {
+    int sg_fd;
+    sg_fd = open(device, O_RDWR);
+    return sg_fd;
+}
+
+int tsp_close( int fd ) {
+    return close(fd);
+}
+
+static int do_command(int fd, uint8_t command, char *command_name, int dir, uint8_t *buffer, unsigned int buffer_size) {
+    unsigned char cmdBlk[] = {command, 0, 0, 0, buffer_size, 0};
     unsigned char sense_buffer[32];
     sg_io_hdr_t io_hdr;
     int rc, ret;
-
-    //read 5 byte FLAGS
-    cmdBlk[0] = SCMD_READ_FLAGS;
     memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
     io_hdr.interface_id = 'S';
     io_hdr.cmd_len = sizeof(cmdBlk);
     io_hdr.mx_sb_len = sizeof(sense_buffer);
-    io_hdr.dxfer_direction = SG_DXFER_FROM_DEV;
-    io_hdr.dxfer_len = sizeof(buff);
-    io_hdr.dxferp = buff;
+    io_hdr.dxfer_direction = dir;
+    io_hdr.dxfer_len = buffer_size;
+    io_hdr.dxferp = buffer;
     io_hdr.cmdp = cmdBlk;
     io_hdr.sbp = sense_buffer;
     io_hdr.timeout = 20000;     /* 20000 millisecs == 20 seconds */
     rc = ioctl(fd, SG_IO, &io_hdr);
-    ret = check_error (rc, "SCMD_READ_FLAGS", &io_hdr);
-    if (ret == 0) {
-        //write 5 byte FLAGS
-        buff[0] = LFLAG_RESET_LINK | LFLAG_RESET_CONFIG | LFLAG_SUBSYSTEM_RESET;
-        cmdBlk[0] = SCMD_WRITE_FLAGS;
-        memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
-        io_hdr.interface_id = 'S';
-        io_hdr.cmd_len = sizeof(cmdBlk);
-        io_hdr.mx_sb_len = sizeof(sense_buffer);
-        io_hdr.dxfer_direction = SG_DXFER_TO_DEV;
-        io_hdr.dxfer_len = sizeof(buff);
-        io_hdr.dxferp = buff;
-        io_hdr.cmdp = cmdBlk;
-        io_hdr.sbp = sense_buffer;
-        io_hdr.timeout = 20000;     /* 20000 millisecs == 20 seconds */
-        rc = ioctl(fd, SG_IO, &io_hdr);
-        ret = check_error (rc, "SCMD_WRITE_FLAGS", &io_hdr);
-    } 
+    ret = check_error (rc, command_name, &io_hdr);
     return ret;
 }
 
-int tsp_analyse( int fd ) {
-    assert(false);
+//Reset a host link connection
+//Returns zero on success or -1 on error.
+int tsp_reset( int fd ) {
+    uint8_t buff[5];
+    int ret;
+    //read FLAGS
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    if (ret == 0) {
+        //write FLAGS
+        buff[0] = LFLAG_RESET_LINK;
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
+    }
+    return ret;
 }
 
+//resets the link and (with analyse asserted) the connected devices of the host link
+//Returns zero on success or -1 on error.
+int tsp_analyse( int fd ) {
+    uint8_t buff[5];
+    int ret;
+    //read FLAGS
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, sizeof(buff));
+    if (ret == 0) {
+        //write FLAGS
+        buff[0] = LFLAG_SUBSYSTEM_ANALYSE;
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, sizeof(buff));
+    }
+    return ret;
+}
+
+//returns the state of the error line of the host link connection specified by
+//Returns zero or one indicating the state of the error line on success or -1 on error.
 int tsp_error( int fd ) {
     assert(false);
 }
 
+//By default a raw link protocol is used in which the target attempts to input
+//length bytes of data (in 4096 byte blocks) until a timeout occurs.
+//If iserver link protocol is used, an iserver packet of total length of up to
+//length (or 4096) bytes containing a two byte count and count bytes of data is input.
+//In block link protocol mode, an attempt is made to read a block of data of
+//length length. The link protocol and block size is set using tsp_protocol().
+//In protocol modes other than raw mode, the length of data requested must be
+//the same as the block size specified by the function tsp_protocol().
+//If a timeout occurs during a read, it is an error to subsequently request a 
+//lesser amount of data until either the original request is satisfied or 
+//until the connection is reset using tsp_reset().
+
+//data: Pointer to memory into which data is read.
+//length: The maximum amount of data to be read.
+//timeout: Timeout in seconds. Zero for no timeout.
+//Returns the number of bytes read (which may be less than that requested) on success or -1 on error.
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     assert(false);
 }
