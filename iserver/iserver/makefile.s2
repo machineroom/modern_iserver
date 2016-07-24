@@ -1,0 +1,95 @@
+#
+#	@(#)makefile.s2	1.2
+#
+#	makefile.s2
+#
+#	Makefile for Solaris 2 iserver V1.5
+#
+#	Copyright (c) 1990, 1991 INMOS Limited
+#	Copyright (c) 1993 Transtech Parallel Systems Limited
+#
+
+TPSDIR=	/opt/transtech
+
+ENDIAN=	BIG_ENDIAN
+LINKOPS=../linkops
+LINKIOS=../linkios
+
+CC=	cc -c
+CFLAGS=	-O -D`arch` -DSOLARIS -D$(ENDIAN) -I$(LINKOPS)
+
+LD=	cc
+LDFLAGS=-o iserver -lsocket -lnsl
+
+OBJECTS=iserver.o \
+	hostc.o \
+	filec.o \
+	serverc.o \
+	sh.o \
+	serve.o \
+	boot.o \
+	pack.o \
+	info.o \
+	ttyio.o \
+	files.o \
+	parsecl.o \
+	record.o \
+	misc.o
+
+LOBJ=	$(LINKOPS)/conlib.o \
+	$(LINKOPS)/debug.o \
+	$(LINKOPS)/linkops.o \
+	$(LINKOPS)/lmethod.o \
+	$(LINKOPS)/lops.o \
+	$(LINKOPS)/metlnkio.o \
+	$(LINKOPS)/tcplink.o \
+	$(LINKOPS)/tops.o
+
+LNKOBJ=	$(LINKIOS)/b014link.o \
+	$(LINKIOS)/b016link.o \
+	$(LINKIOS)/tsplink.o
+
+TSPLIB=	$(TPSDIR)/lib/libtsp.a
+
+TARGET=	iserver
+
+all:	$(TARGET)
+
+$(TARGET): $(OBJECTS) $(LOBJ) $(LNKOBJ) $(TSPLIB)
+	$(LD) $(LDFLAGS) $(OBJECTS) $(LOBJ) $(LNKOBJ) $(TSPLIB)
+
+clean:
+	rm -rf $(OBJECTS)
+	rm -rf $(TARGET)
+
+iserver.o: iserver.c server.h srvtypes.h sp.h bsd.h
+iserver.o: iserver.h sh.h misc.h serve.h files.h
+iserver.o: parsecl.h boot.h
+hostc.o: hostc.c server.h
+hostc.o: srvtypes.h sp.h bsd.h iserver.h pack.h misc.h
+hostc.o: ttyio.h serve.h
+filec.o: filec.c server.h srvtypes.h sp.h bsd.h
+filec.o: iserver.h pack.h misc.h files.h record.h
+serverc.o: serverc.c server.h srvtypes.h sp.h bsd.h
+serverc.o: iserver.h pack.h misc.h
+sh.o: sh.c server.h
+sh.o: srvtypes.h sp.h bsd.h iserver.h sh.h files.h
+serve.o: serve.c server.h srvtypes.h sp.h bsd.h
+serve.o: iserver.h misc.h ttyio.h serve.h
+boot.o: boot.c server.h srvtypes.h sp.h bsd.h
+boot.o: iserver.h misc.h boot.h
+pack.o: pack.c server.h srvtypes.h sp.h bsd.h iserver.h pack.h
+info.o: info.c server.h srvtypes.h sp.h bsd.h iserver.h pack.h
+info.o: info.h
+ttyio.o: ttyio.c server.h
+ttyio.o: srvtypes.h sp.h bsd.h iserver.h pack.h misc.h
+ttyio.o: ttyio.h
+files.o: files.c server.h srvtypes.h sp.h bsd.h
+files.o: files.h
+parsecl.o: parsecl.c server.h srvtypes.h sp.h bsd.h iserver.h
+parsecl.o: pack.h sh.h parsecl.h
+record.o: record.c server.h srvtypes.h sp.h bsd.h
+record.o: iserver.h record.h files.h pack.h misc.h
+misc.o: misc.c server.h srvtypes.h sp.h
+misc.o: bsd.h iserver.h sh.h misc.h files.h
+

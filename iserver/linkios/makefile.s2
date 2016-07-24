@@ -1,0 +1,33 @@
+#
+#	@(#)makefile.s2	1.2
+#
+#	makefile.s2
+#
+#	Makefile for iserver V1.5
+#
+#	Copyright (c) 1990, 1991 INMOS Limited
+#	Copyright (c) 1993 Transtech Parallel Systems Limited
+#
+
+TPSDIR=	/opt/transtech
+
+ENDIAN=	BIG_ENDIAN
+
+OBJECTS=b014link.o \
+	b016link.o \
+	tsplink.o
+
+CC=	cc -c
+CFLAGS=	-O -D`arch` -DSUN -D$(ENDIAN) -I ../linkops -I $(TPSDIR)/include
+
+all:	$(OBJECTS)
+
+clean:
+	rm -rf $(OBJECTS)
+
+# Dependencies
+
+b014link.o: b014link.c linkio.h ims_bcmd.h
+b016link.o: b016link.c linkio.h ims_bcmd.h
+tsplink.o: tsplink.c linkio.h ../linkops/linkops.h $(TPSDIR)/include/tsplib.h
+

@@ -1,0 +1,98 @@
+#
+#	@(#)makefile.s2	1.1
+#
+#	makefile.s2
+#
+#	Makefile for Solaris 2 iserver V1.5
+#
+#	Copyright (c) 1990, 1991 INMOS Limited
+#	Copyright (c) 1993 Transtech Parallel Systems Limited
+#
+
+.KEEP_STATE:
+
+TPSDIR=	/opt/transtech
+
+LINKIOS=../linkios
+
+CC=	cc -c
+LINK=	cc -o
+HOST=	SUN4
+OS=	SOLARIS
+COMMS=	SUNTCP
+END=	BIG_ENDIAN
+CFLAGS=	-D`arch` -O -I$(LINKIOS) -DNODELAY
+O=	.o
+E=
+
+##uncomment line below for tcp linkops support
+TCP =-DOPStcp
+TMODULE = tops$(O)
+
+##uncomment next 2 lines for tcplink linkio support
+LMODULE1 = tcplink$(O)
+L1 = -DLNKtcp
+
+##uncomment next 2 lines for b011 support
+#LMODULE2 = $(LINKIOS)/b011link$(O)
+#L2 = -DLNKb011
+
+##uncomment next 2 lines for b014 support
+LMODULE3 = $(LINKIOS)/b014link$(O)
+L3 = -DLNKb014
+
+##uncomment next 2 lines for b016 support
+LMODULE4 = $(LINKIOS)/b016link$(O)
+L4 = -DLNKb016
+
+##uncomment next 2 lines for tsp support
+LMODULE5 = $(LINKIOS)/tsplink$(O)
+L5 = -DLNKtsp
+
+LINKMODULES= $(LMODULE1) $(LMODULE2) $(LMODULE3) $(LMODULE4) $(LMODULE5)
+LINKFLAGS = $(L1) $(L2) $(L3) $(L4) $(L5)
+
+DFLAGS= -D$(HOST) -D$(OS) -D$(COMMS) -D$(END) $(TCP) $(LINKFLAGS) -DMES
+
+#define objects
+OPSOBJECTS=linkops$(O) lops$(O) $(TMODULE) metlnkio$(O) conlib$(O) lmethod$(O) debug$(O) $(LMODULE1)
+OBJECTS=$(OPSOBJECTS) $(LINKMODULES)
+
+#final dependancy
+all: $(OPSOBJECTS)
+
+clean:
+	rm -f $(OPSOBJECTS)
+
+#debug dependancies to produce object
+debug$(O): debug.c types.h
+	$(CC)  $(CFLAGS) $(DFLAGS) debug.c
+
+#lmethod dependanices to produce object
+lmethod$(O): lmethod.c lmethod.h
+	$(CC)  $(CFLAGS) $(DFLAGS) lmethod.c
+
+#conlib dependancies to produce object
+conlib$(O): conlib.c conlib.h debug.h opserror.h lmethod.h types.h
+	$(CC)  $(CFLAGS) $(DFLAGS) conlib.c
+
+#metlnkio dependancies to produce object
+metlnkio$(O): metlnkio.c lmethod.h opserror.h types.h conlib.h $(LINKIOS)/linkio.h
+	$(CC)  $(CFLAGS) $(DFLAGS) metlnkio.c 
+
+#tcplinkio dependancies to produce object
+tcplink$(O): tcplink.c types.h debug.h opsprot.h opserror.h $(LINKIOS)/linkio.h
+	$(CC) $(CFLAGS) $(DFLAGS) tcplink.c
+
+#lops dependancies to produce object
+lops$(O): lops.c lops.h types.h linkops.h hbeat.h opserror.h lmethod.h conlib.h debug.h $(LINKIOS)/linkio.h
+	$(CC)  $(CFLAGS) $(DFLAGS) lops.c
+
+#tops dependancies to produce object
+tops$(O): tops.c tops.h linkops.h hbeat.h opsprot.h opserror.h types.h conlib.h debug.h
+	$(CC)  $(CFLAGS) $(DFLAGS) tops.c
+ 
+#linkops dependancies to produce object
+linkops$(O): linkops.c linkops.h lops.h tops.h opserror.h lmethod.h types.h debug.h conlib.h
+	$(CC)  $(CFLAGS) $(DFLAGS) linkops.c                                                                                   
+
