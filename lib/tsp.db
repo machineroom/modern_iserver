@@ -1,0 +1,20 @@
+#
+#	@(#)tsp.db	1.3
+#
+#	tsp.db
+#
+#	Transtech SCSI Processor
+#
+#	Example iserver connection database file
+#
+#	Copyright (c) 1993 Transtech Parallel Systems Limited
+#
+
+# SCSI id 0
+#resource, working, machine, link name, link dev, MMS file, MMS link, description
+|sg2     |T      |localhost |sg2 |tsp   |||Host link 0|
+|sg3     |T      |localhost |sg3 |tsp   |||Host link 1|
+|sg4     |T      |localhost |sg4 |tsp   |||Host link 2|
+|sg5     |T      |localhost |sg5 |tsp   |||Host link 3|
+
+
