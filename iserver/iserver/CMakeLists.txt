@@ -9,4 +9,4 @@ target_include_directories (iserver PUBLIC
                             ${CMAKE_CURRENT_SOURCE_DIR}/../linkops
                            )
                            
-target_compile_definitions (iserver PRIVATE LINUX PROTOTYPES)
+target_compile_definitions (iserver PRIVATE LINUX )

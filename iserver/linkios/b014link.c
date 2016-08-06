@@ -24,11 +24,7 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 static int ActiveLink = NULL_LINK;
 static long int Bytes = 0L;
 
-#ifdef PROTOTYPES
 static int SetTimeout(int, int);
-#else
-static int SetTimeout();
-#endif
 
 int B014OpenLink(Name)
 char *Name;

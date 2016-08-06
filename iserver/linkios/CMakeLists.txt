@@ -6,5 +6,6 @@ target_include_directories (linkios PUBLIC
                             ${CMAKE_CURRENT_SOURCE_DIR}/../../tsp/include
                             ${CMAKE_CURRENT_SOURCE_DIR}/../linkops
                            )
+target_link_libraries (linkios tsp)
                            
-target_compile_definitions (linkios PRIVATE LINUX PROTOTYPES) 
+target_compile_definitions (linkios PRIVATE LINUX ) 
