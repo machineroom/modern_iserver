@@ -1,5 +1,5 @@
 /*
-    macihenroomfiddling@google.com implementation of transtech tsplib on Linux sg driver
+    macihenroomfiddling@gmail.com implementation of transtech tsplib on Linux sg driver
  */
 
 //Transtech headers
@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
+#include <scsi/scsi.h>
 
 #define DEFAULT_TIMEOUT (5)
 //#define DEBUG
@@ -205,7 +206,7 @@ int tsp_open( char *device ) {
         rfd = open(dev, O_RDWR);
         return 1;
     } else {
-        printf ("URK don't know how ot cope with >1 open!\n");
+        printf ("URK don't know how to cope with >1 open!\n");
         assert(false);
         return -1;
     }
@@ -218,18 +219,17 @@ int tsp_close( int fd ) {
     return 0;
 }
 
-static int do_command(int fd, 
+static int transtech_command(int fd, 
                       uint8_t command, 
                       char *command_name, 
                       int dir, 
                       uint8_t *buffer, 
                       unsigned int *buffer_size, 
                       unsigned int timeout,
-                      unsigned int *status) {
+                      sg_io_hdr_t *io_hdr) {
     unsigned char cmdBlk[6];
     unsigned char sense_buffer[32];
-    sg_io_hdr_t io_hdr;
-    int rc, ret;
+    int rc;
     memset(&cmdBlk, 0, sizeof(cmdBlk));
     cmdBlk[0] = command;
     cmdBlk[1] = 0;  //LUN;
@@ -242,107 +242,181 @@ static int do_command(int fd,
     printf ("%s cmd blk = %02X %02X %02X %02X %02X %02X\n", 
              command_name, cmdBlk[0], cmdBlk[1], cmdBlk[2], cmdBlk[3], cmdBlk[4], cmdBlk[5]);
 #endif
-    memset(&io_hdr, 0, sizeof(io_hdr));
-    io_hdr.interface_id = 'S';
-    io_hdr.cmdp = cmdBlk;
-    io_hdr.cmd_len = sizeof(cmdBlk);
-    io_hdr.sbp = sense_buffer;
-    io_hdr.mx_sb_len = sizeof(sense_buffer);
-    io_hdr.dxfer_direction = dir;
-    io_hdr.dxfer_len = *buffer_size;
-    io_hdr.dxferp = buffer;
-    io_hdr.timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
-    if (dir == SG_DXFER_FROM_DEV) {
-        rc = ioctl(rfd, SG_IO, &io_hdr);
+    memset(io_hdr, 0, sizeof(*io_hdr));
+    io_hdr->interface_id = 'S';
+    io_hdr->cmdp = cmdBlk;
+    io_hdr->cmd_len = sizeof(cmdBlk);
+    io_hdr->sbp = sense_buffer;
+    io_hdr->mx_sb_len = sizeof(sense_buffer);
+    io_hdr->dxfer_direction = dir;
+    io_hdr->dxfer_len = *buffer_size;
+    io_hdr->dxferp = buffer;
+    io_hdr->timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
+    rc = ioctl(fd, SG_IO, io_hdr);
+    *buffer_size = io_hdr->dxfer_len - io_hdr->resid;
+    return rc;
+}
+
+static bool ready(int fd) {
+    uint8_t buff[5];
+    unsigned int size = sizeof(buff);
+    sg_io_hdr_t io_hdr;
+    int ret;
+    //read FLAGS
+    ret = transtech_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
+    if (ret == 0 && io_hdr.status == GOOD) {
+        return true;
     } else {
-        rc = ioctl(wfd, SG_IO, &io_hdr);
+        return false;
     }
+}
+
+static int do_command(int fd, 
+                      uint8_t command, 
+                      char *command_name, 
+                      int dir, 
+                      uint8_t *buffer, 
+                      unsigned int *buffer_size, 
+                      unsigned int timeout)
+{
+    int rc, ret;
+    while (!ready (fd)) {
+#ifdef DEBUG
+        printf ("%s !ready - waiting\n", command_name);
+#endif
+        usleep(100000);
+    }
+    sg_io_hdr_t io_hdr;
+    rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
     ret = check_error (rc, command_name, &io_hdr);
     /* for verification only*/
 #ifdef DEBUG
     printf ("%s dxfer_len = %u, resid = %u\n", command_name, io_hdr.dxfer_len, io_hdr.resid);
 #endif
-    *buffer_size = io_hdr.dxfer_len - io_hdr.resid;
-    if (status != NULL) {
-        *status = io_hdr.status;
+    return ret;
+}
+
+static int get_transtech_bits (int fd, unsigned char *flags, unsigned char *protocol, int *block_size) {
+    uint8_t buff[5];
+    unsigned int size = sizeof(buff);
+    int ret;
+    //read FLAGS
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT);
+    if (flags != NULL) {
+        *flags = buff[0];
+    }
+    if (protocol != NULL) {
+        *protocol = buff[1];
+    }
+    if (block_size != NULL) {
+        *block_size = buff[2];
+        *block_size <<= 8;
+        *block_size |= buff[3];
+        *block_size <<= 8;
+        *block_size |= buff[4];
     }
     return ret;
 }
 
-int tsp_reset( int fd ) {
-    uint8_t buff[5];
+static int set_transtech_bits (int fd, unsigned char flags, unsigned char protocol, int block_size) {
     int ret;
-    unsigned int size;
-    //read FLAGS
-    size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
+    uint8_t buff[5];
+    unsigned int size = sizeof(buff);
+    buff[0] = flags;
+    buff[1] = protocol;
+    buff[2] = (block_size >> 16) & 0xFF;
+    buff[3] = (block_size >> 8)  & 0xFF;
+    buff[4] = (block_size >> 0)  & 0xFF;
+    ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT);
+    return ret;
+}
+
+int tsp_reset( int fd ) {
+    int ret;
+    unsigned char flags;
+    unsigned char protocol;
+    int block_size;
+    /*
+     The link protocol is set to raw byte mode when the host link
+     is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
+     tsp_reset_config().  After being set by tsp_protocol()  this
+     protocol persists until the link is reset.
+    */
+    ret = get_transtech_bits (rfd, &flags, &protocol, &block_size);
+    flags = LFLAG_RESET_LINK;
+    protocol = TSP_RAW_PROTOCOL;
+    block_size = 4096;
+    ret = set_transtech_bits (rfd, flags, protocol, block_size);
     if (ret == 0) {
-        //write FLAGS
-        buff[0] = LFLAG_RESET_LINK;
-        /*
-         The link protocol is set to raw byte mode when the host link
-         is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
-         tsp_reset_config().  After being set by tsp_protocol()  this
-         protocol persists until the link is reset.
-        */
-        buff[1] = TSP_RAW_PROTOCOL;
-        size = sizeof(buff);
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
+        ret = get_transtech_bits (wfd, &flags, &protocol, &block_size);
+        flags = LFLAG_RESET_LINK;
+        protocol = TSP_RAW_PROTOCOL;
+        block_size = 4096;
+        ret = set_transtech_bits (wfd, flags, protocol, block_size);
     }
     return ret;
 }
 
 int tsp_analyse( int fd ) {
-    uint8_t buff[5];
     int ret;
-    unsigned int size;
-    //read FLAGS
-    size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
+    unsigned char flags;
+    unsigned char protocol;
+    int block_size;
+    flags = LFLAG_SUBSYSTEM_ANALYSE;
+    /*
+     The link protocol is set to raw byte mode when the host link
+     is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
+     tsp_reset_config().  After being set by tsp_protocol()  this
+     protocol persists until the link is reset.
+    */
+    ret = get_transtech_bits (rfd, &flags, &protocol, &block_size);
+    flags = LFLAG_RESET_LINK;
+    flags |= LFLAG_SUBSYSTEM_ANALYSE;
+    protocol = TSP_RAW_PROTOCOL;
+    ret = set_transtech_bits (rfd, flags, protocol, block_size);
     if (ret == 0) {
-        //write FLAGS
-        buff[0] = LFLAG_SUBSYSTEM_ANALYSE;
-        /*
-         The link protocol is set to raw byte mode when the host link
-         is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
-         tsp_reset_config().  After being set by tsp_protocol()  this
-         protocol persists until the link is reset.
-        */
-        buff[1] = TSP_RAW_PROTOCOL;
-        size = sizeof(buff);
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
+        ret = get_transtech_bits (wfd, &flags, &protocol, &block_size);
+        flags = LFLAG_RESET_LINK;
+        flags |= LFLAG_SUBSYSTEM_ANALYSE;
+        protocol = TSP_RAW_PROTOCOL;
+        ret = set_transtech_bits (wfd, flags, protocol, block_size);
+    }
+    return ret;
+}
+
+int tsp_protocol( int fd, int protocol, int block_size ) {
+    int ret;
+    unsigned char flags;
+    //link protocol only applies to read
+    ret = get_transtech_bits (rfd, &flags, NULL, NULL);
+    if (ret == 0) {
+        ret = set_transtech_bits (rfd, flags, protocol, block_size);
     }
     return ret;
 }
 
 int tsp_error( int fd ) {
-    uint8_t buff[5];
     int ret;
-    unsigned int size;
-    //read FLAGS
-    size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
+    unsigned char flags;
+    ret = get_transtech_bits (rfd, &flags, NULL, NULL);
     if (ret == 0) {
-        if ((buff[0] & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
+        if ((flags & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
             return 1;
+        }
+        ret = get_transtech_bits (wfd, &flags, NULL, NULL);
+        if (ret == 0) {
+            if ((flags & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
+                return 1;
+            }
         }
     }
     return ret;
 }
 
-static bool is_idle (int fd) {
-    unsigned int size = 0;
-    unsigned int status = 0;
-    int ret;
-    ret = do_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, NULL, &size, DEFAULT_TIMEOUT, &status);
-    printf ("is_idle : status = %02X\n", status);
-    return false;
-}
-
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
-    ret = do_command (fd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout, NULL);
+    ret = do_command (rfd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout);
     if (ret == 0) {
         //return bytes read
         ret = size;
@@ -353,28 +427,10 @@ int tsp_read( int fd, void *data, size_t length, int timeout ) {
 int tsp_write( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
-    ret = do_command (fd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &size, timeout, NULL);
+    ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &size, timeout);
     if (ret == 0) {
         //return bytes written
         ret = size;
-    }
-    return ret;
-}
-
-int tsp_protocol( int fd, int protocol, int block_size ) {
-    uint8_t buff[5];
-    int ret;
-    //read FLAGS
-    unsigned int size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
-    if (ret == 0) {
-        //write protocol & block size
-        buff[1] = protocol;
-        buff[2] = (block_size >> 16) & 0xFF;
-        buff[3] = (block_size >> 8)  & 0xFF;
-        buff[4] = (block_size >> 0)  & 0xFF;
-        size = sizeof(buff);
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     }
     return ret;
 }
