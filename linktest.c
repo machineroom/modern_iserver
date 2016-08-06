@@ -42,7 +42,8 @@ int main (int argc, char **argv) {
              };  
     boot[0] = sizeof (boot)-1;  /*"If the first byte received is 2 or greater then that many bytes of code 
                                    will be input from the link and placed in memory starting at MEMSTART.
-                                   This code will then be executed."*/
+                                   This code will then be executed."
+                                   http://www.wizzy.com/wizzy/transputer_faq.txt*/
     rc = tsp_write(wfd, boot, sizeof(boot), 2 );
     printf ("tsp_write = %d\n", rc);
     uint8_t rx[256];
