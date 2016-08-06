@@ -15,12 +15,17 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include <unixio.h>
 #endif
 
+#ifdef LINUX
+#include <unistd.h>
+#endif
+
 #include "server.h"
 #include "iserver.h"
 #include "pack.h"
 #include "misc.h"
 #include "files.h"
 #include "record.h"
+#include "filec.h"
 
 static char     DataBuffer[MAX_SLICE_LENGTH + 1];
 #ifndef PCTCP
@@ -30,7 +35,7 @@ extern int errno;
  * SpOpen
  */
 
-void            SpOpen()
+void            SpOpen(void)
 {
    FILE  *fd;
    char              *name, org, mode;
@@ -106,7 +111,7 @@ void            SpOpen()
  * SpClose
  */
 
-void            SpClose()
+void            SpClose(void)
 {
    long  fileid;
    FILE  *fd;
@@ -139,7 +144,7 @@ void            SpClose()
  * SpRead
  */
 
-void            SpRead()
+void            SpRead(void)
 {
    char              *Data;
    int               Read; 
@@ -207,7 +212,7 @@ void            SpRead()
  * SpWrite
  */
 
-void            SpWrite()
+void            SpWrite(void)
 {
    char              *Data;
    int               Written;
@@ -271,7 +276,7 @@ void            SpWrite()
  * SpGetBlock
  */
 
-void            SpGetBlock()
+void            SpGetBlock(void)
 {
    char              *Data;
    int               Read;
@@ -335,7 +340,7 @@ void            SpGetBlock()
  * SpPutBlock
  */
 
-void            SpPutBlock()
+void            SpPutBlock(void)
 {
    char              *Data;
    int               Written;
@@ -398,7 +403,7 @@ void            SpPutBlock()
  * SpGets
  */
 
-void            SpGets()
+void            SpGets(void)
 {
    char              *Data;
    long              fileid;
@@ -472,7 +477,7 @@ void            SpGets()
  * SpPuts
  */
 
-void            SpPuts()
+void            SpPuts(void)
 {
    char              *Data;
    long              fileid;
@@ -531,7 +536,7 @@ void            SpPuts()
  * SpFlush
  */
 
-void            SpFlush()
+void            SpFlush(void)
 {
    long  fileid;
    FILE  *fd;
@@ -564,7 +569,7 @@ void            SpFlush()
  * SpSeek
  */
 
-void            SpSeek()
+void            SpSeek(void)
 {
    long              Offset, Origin;
    int               orig;
@@ -646,7 +651,7 @@ void            SpSeek()
  * SpTell
  */
 
-void            SpTell()
+void            SpTell(void)
 {
    long              Position;
    long              fileid;
@@ -689,7 +694,7 @@ void            SpTell()
  * SpEof
  */
 
-void            SpEof()
+void            SpEof(void)
 {
    long  fileid;
    FILE  *fd;
@@ -722,7 +727,7 @@ void            SpEof()
  * SpError
  */
 
-void            SpError()
+void            SpError(void)
 {
    long  Errno;
    char  String[128];
@@ -778,7 +783,7 @@ void            SpError()
  * SpRemove
  */
 
-void            SpRemove()
+void            SpRemove(void)
 {
    int    size;
    struct stat buf;
@@ -816,7 +821,7 @@ void            SpRemove()
  * SpRename
  */
 
-void            SpRename()
+void            SpRename(void)
 {
    char  *Oldname, *Newname;
    int   size;
@@ -859,7 +864,7 @@ void            SpRename()
  * SpIsaTTY
  */
  
-void SpIsaTTY()
+void SpIsaTTY(void)
 {
    long  fileid;
    FILE  *fd;
@@ -893,7 +898,7 @@ void SpIsaTTY()
  * SpExists
  */
  
-void SpExists()
+void SpExists(void)
 {
    struct stat info;
    int         size;
@@ -928,7 +933,7 @@ void SpExists()
  * SpErrStat
  */
  
-void SpErrStat()
+void SpErrStat(void)
 {
    long  errnum;
    long  fileid;
@@ -938,7 +943,9 @@ void SpErrStat()
    int   size;
    int   forg=0;
    extern int  sys_nerr;
+#ifndef LINUX
    extern char *sys_errlist[];
+#endif
    
    dbgmsg("SP.ERRSTAT");
 

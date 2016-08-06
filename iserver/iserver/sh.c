@@ -12,12 +12,20 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include <fcntl.h>
 #endif
 
+#ifdef LINUX
+#include <unistd.h>
+#include <stdlib.h>
+#endif
+
 #include "server.h"
 #include "iserver.h"
 #include "sh.h"
 #include "files.h"
 #include "linkops.h"
 #include "opserror.h"
+#include "misc.h"   
+#include "ttyio.h"   
+#include "parsecl.h"
 
 #define ACCESS_TO_SHELL
 
@@ -35,8 +43,6 @@ static int initcmds();
 static int execute();
 
 int addarg();
-
-void freeargs();
 
 struct CMD {
    char *cmdname;
@@ -85,7 +91,6 @@ static char *copystr(str)
 char *str;
 {
    char  *new;
-   char  *malloc();
    
    new = malloc(strlen(str)+1);
    if (new == NULL)
@@ -120,7 +125,7 @@ char *commandfile;
    setbuf(ShIn[ShInNo],NULL);  /* Unbuffered */
    setbuf(ShOut,NULL);  /* Unbuffered */
 
-   debug=(int) FALSE;
+   debug=(int) false;
    initcmds(commandfile);
    
    strcpy(OptionStr, "");
@@ -129,7 +134,7 @@ char *commandfile;
    
    IsTty = isatty(fileno(ShIn[ShInNo]));
 
-   while (TRUE)
+   while (true)
    {
       if (res=setjmp(SafePlace)) {
          ResetTerminal();
@@ -566,7 +571,7 @@ char **argv;
          putc('\n',ShOut);
       }
 
-      fprintf(ShOut, intcmds[i].cmdname);
+      fprintf(ShOut, "%s", intcmds[i].cmdname);
       spaces = 8-(len%8);
       col = col+len+spaces;
       while (spaces--)
@@ -583,7 +588,7 @@ char **argv;
          putc('\n',ShOut);
       }
 
-      fprintf(ShOut, extcmds[i].cmdname);
+      fprintf(ShOut, "%s", extcmds[i].cmdname);
       spaces = 8-(len%8);
       col = col+len+spaces;
       while (spaces--)
@@ -646,8 +651,6 @@ char *cmdfile;
    int   cmdnum=1;
    char  line[MAX_STRING_LENGTH];
    char  *sp;
-   char  *malloc();
-   char  *getenv();
    FILE  *fd;
 
    extcmds[0].cmdname = "iserver";

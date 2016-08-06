@@ -11,9 +11,11 @@
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-extern void SpOpenRec();
-extern int form_seq_seek();
-extern int unform_seq_seek();
-#endif /* PROTOTYPES */
+extern void SpOpenRec(void);
+extern void SpPutRec(void);
+extern void SpGetRec(void);
+extern void SpPutEOF(void);
+
+extern int form_seq_seek(long fileid, long offset, long origin);
+extern int unform_seq_seek(long fileid, long offset, int origin);
+

@@ -61,6 +61,10 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #endif
 #endif
 
+#ifdef LINUX
+#include <string.h>
+#endif
+
 #ifdef PCTCP
 #include <pctcp/syscalls.h>
 #endif
@@ -81,7 +85,7 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 /***
 **** exported variables
 ***/
-BOOL METAsearch_database = TRUE;
+bool METAsearch_database = true;
 int METAmethod = HW_X;
 
 /**
@@ -113,7 +117,7 @@ struct VECTOR {
   int (*function)();
 };                                        
 
-BOOL   method_isavailable[MAX_LMETHODS];
+bool   method_isavailable[MAX_LMETHODS];
 struct VECTOR openlink_vector[MAX_LMETHODS];
 struct VECTOR closelink_vector[MAX_LMETHODS];
 struct VECTOR readlink_vector[MAX_LMETHODS];
@@ -144,7 +148,7 @@ extern int TCPTestRead ();
 extern int TCPTestWrite ();
 #endif
 
-static BOOL StringCaseCmp (s1, s2)
+static bool StringCaseCmp (s1, s2)
 char *s1, *s2;
 {
   int i = 0;
@@ -152,7 +156,7 @@ char *s1, *s2;
 
   /* if one arg is NUL strings are not equal */
   if ((s1[0] == NUL) ^ (s2[0] == NUL)) {
-    return (FALSE);
+    return (false);
   }
   
   while ( (s1[i] != NUL) && (s2[i] != NUL) ) {
@@ -167,16 +171,16 @@ char *s1, *s2;
     }
     
     if (c1 != c2) {
-      return (FALSE);
+      return (false);
     } else {
       i++;
     }
   }
   
   if ((s1[i] == NUL) && (s2[i] == NUL)){
-    return (TRUE);            
+    return (true);            
   } else {
-    return (FALSE);
+    return (false);
   }
 }
 
@@ -192,14 +196,14 @@ char *name;
   char linkname[66];
   char machine[129];
   int result, i, j;
-  BOOL search, found_but_unopened, contains_at, quoted_thismachine, local_resource;
+  bool search, found_but_unopened, contains_at, quoted_thismachine, local_resource;
   
 #define HOSTNAMELEN 65
   char hostname[HOSTNAMELEN];
 
   /* setup pointers to functions */
   for (i = 0; i < MAX_LMETHODS; i++) {
-    method_isavailable[i] = FALSE;
+    method_isavailable[i] = false;
     openlink_vector[i].function = Undefined;
     closelink_vector[i].function = Undefined;
     readlink_vector[i].function = Undefined;
@@ -212,7 +216,7 @@ char *name;
   }
     
 #ifdef LNKtsp
-  method_isavailable[TSP] = TRUE;
+  method_isavailable[TSP] = true;
   openlink_vector[TSP].function    = TSPOpenLink;
   closelink_vector[TSP].function   = TSPCloseLink;
   readlink_vector[TSP].function    = TSPReadLink;
@@ -227,7 +231,7 @@ char *name;
 #ifdef SUN3OR4
 
 #ifdef LNKb011
-  method_isavailable[B011] = TRUE;
+  method_isavailable[B011] = true;
   openlink_vector[B011].function    = B011OpenLink;
   closelink_vector[B011].function   = B011CloseLink;
   readlink_vector[B011].function    = B011ReadLink;
@@ -240,7 +244,7 @@ char *name;
 #endif
 
 #ifdef LNKb014
-  method_isavailable[B014] = TRUE;
+  method_isavailable[B014] = true;
   openlink_vector[B014].function    = B014OpenLink;
   closelink_vector[B014].function   = B014CloseLink;
   readlink_vector[B014].function    = B014ReadLink;
@@ -253,7 +257,7 @@ char *name;
 #endif
     
 #ifdef LNKb016
-  method_isavailable[B016] = TRUE;
+  method_isavailable[B016] = true;
   openlink_vector[B016].function    = B016OpenLink;
   closelink_vector[B016].function   = B016CloseLink;
   readlink_vector[B016].function    = B016ReadLink;
@@ -266,7 +270,7 @@ char *name;
 #endif
     
 #ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = TRUE;
+  method_isavailable[TCP_LINKOPS] = true;
   openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
   closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
   readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
@@ -279,7 +283,7 @@ char *name;
 #endif
 
 #ifdef LNKtd
-  method_isavailable[TD] = TRUE;
+  method_isavailable[TD] = true;
   openlink_vector[TD].function    = TDOpenLink;
   closelink_vector[TD].function   = TDCloseLink;
   readlink_vector[TD].function    = TDReadLink;
@@ -294,7 +298,7 @@ char *name;
    
 #ifdef SGI
 #ifdef LNKtd
-  method_isavailable[TD] = TRUE;
+  method_isavailable[TD] = true;
   openlink_vector[TD].function    = TDOpenLink;
   closelink_vector[TD].function   = TDCloseLink;
   readlink_vector[TD].function    = TDReadLink;
@@ -309,7 +313,7 @@ char *name;
 
 #ifdef SUN386
 #ifdef S386
-  method_isavailable[B008] = TRUE;
+  method_isavailable[B008] = true;
   openlink_vector[B008].function    = S386OpenLink;
   closelink_vector[B008].function   = S386CloseLink;
   readlink_vector[B008].function    = S386ReadLink;
@@ -322,7 +326,7 @@ char *name;
 #endif
 
 #ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = TRUE;
+  method_isavailable[TCP_LINKOPS] = true;
   openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
   closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
   readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
@@ -337,7 +341,7 @@ char *name;
 
 #ifdef PC
 #ifdef LNKb004
-  method_isavailable[B004] = TRUE;
+  method_isavailable[B004] = true;
   openlink_vector[B004].function    = B004OpenLink;
   closelink_vector[B004].function   = B004CloseLink;
   readlink_vector[B004].function    = B004ReadLink;
@@ -350,7 +354,7 @@ char *name;
 #endif
 
 #ifdef LNKb008
-  method_isavailable[B008] = TRUE;
+  method_isavailable[B008] = true;
   openlink_vector[B008].function    = B008OpenLink;
   closelink_vector[B008].function   = B008CloseLink;
   readlink_vector[B008].function    = B008ReadLink;
@@ -363,7 +367,7 @@ char *name;
 #endif
 
 #ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = TRUE;
+  method_isavailable[TCP_LINKOPS] = true;
   openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
   closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
   readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
@@ -378,7 +382,7 @@ char *name;
 
 #ifdef VAX
 #ifdef LNKqt0
-  method_isavailable[QT0] = TRUE;
+  method_isavailable[QT0] = true;
   openlink_vector[QT0].function    = QT0OpenLink;
   closelink_vector[QT0].function   = QT0CloseLink;
   readlink_vector[QT0].function    = QT0ReadLink;
@@ -391,7 +395,7 @@ char *name;
 #endif
 
 #ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = TRUE;
+  method_isavailable[TCP_LINKOPS] = true;
   openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
   closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
   readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
@@ -406,7 +410,7 @@ char *name;
 
   METAmethod = HW_X;
    
-  if (METAsearch_database == TRUE) {
+  if (METAsearch_database == true) {
     /* initialise database search, setup resource name */
     if ((name == NULL) || (*name == NUL)) {
       DebugMessage (fprintf (stderr, "Debug       : null resource name given\n") );
@@ -419,16 +423,16 @@ char *name;
      ** and internal_machine parts
     **/
     {
-      BOOL strip_resource, strip_machine;
+      bool strip_resource, strip_machine;
       
       internal_resource[0] = NUL;
       internal_machine[0] = NUL;
       
-      strip_resource = TRUE;
-      strip_machine = FALSE;
-      contains_at = FALSE;
+      strip_resource = true;
+      strip_machine = false;
+      contains_at = false;
       i = 0;
-      while (strip_resource == TRUE) {
+      while (strip_resource == true) {
         if (i > 64) {                                 
           DebugMessage (fprintf (stderr, "Debug       : resource name too long\n") );
           ErrorMessage (fprintf (stderr, "Error       : invalid resource name\n") );
@@ -441,7 +445,7 @@ char *name;
             ErrorMessage (fprintf (stderr, "Error       : invalid resource name\n") );
             return (ER_LINK_SYNTAX);
           } else {
-            strip_resource = FALSE; 
+            strip_resource = false; 
           }
           
         } else {
@@ -452,9 +456,9 @@ char *name;
               return (ER_LINK_SYNTAX);
             } else {
               internal_resource[i] = NUL;
-              strip_resource = FALSE;
-              strip_machine = TRUE;
-              contains_at = TRUE;
+              strip_resource = false;
+              strip_machine = true;
+              contains_at = true;
               i++;
             }
           
@@ -465,10 +469,10 @@ char *name;
         }
       }
      
-      if (strip_machine == FALSE) {
+      if (strip_machine == false) {
       } else {
         j = 0;
-        while (strip_machine == TRUE) {
+        while (strip_machine == true) {
           if (j > 64) {
             DebugMessage (fprintf (stderr, "Debug       : machine name too long\n") );
             ErrorMessage (fprintf (stderr, "Error       : invalid resource name\n") );
@@ -482,7 +486,7 @@ char *name;
               return (ER_LINK_SYNTAX);
             } else {
               internal_machine[j] = NUL;
-              strip_machine = FALSE;
+              strip_machine = false;
             }
             
           } else {
@@ -517,7 +521,7 @@ char *name;
 #if defined(PCNFS) || defined(PCTCP)
     }
     else {
-      if ((contains_at == TRUE) && (StringCaseCmp (internal_machine, "localhost") == FALSE)) {
+      if ((contains_at == true) && (StringCaseCmp (internal_machine, "localhost") == false)) {
         ErrorMessage (fprintf (stderr, "Error       : module[metlnkio.c], function [OpenLink]\n -> can't access remote [%s] TCP not installed\n", name ) );
         return (ER_LINK_SOFT);
       }
@@ -529,23 +533,23 @@ char *name;
     strcpy (hostname, "localhost");
 #endif /* LNKtcp */
 
-    if (( StringCaseCmp (internal_machine, "localhost") == TRUE) || ( StringCaseCmp (internal_machine, hostname) == TRUE)) {
-      quoted_thismachine = TRUE;
+    if (( StringCaseCmp (internal_machine, "localhost") == true) || ( StringCaseCmp (internal_machine, hostname) == true)) {
+      quoted_thismachine = true;
       DebugMessage (fprintf (stderr, "Debug       : search for resource on this machine only\n") );
     } else {
-      quoted_thismachine = FALSE;
+      quoted_thismachine = false;
       DebugMessage (fprintf (stderr, "Debug       : search for resource on any machine\n") );
     }   
     
-    if (contains_at == TRUE) {
-      if (quoted_thismachine == FALSE) {
+    if (contains_at == true) {
+      if (quoted_thismachine == false) {
 #ifdef LNKtcp
         /**
          ** machine name given quotes another machine so try
          ** opening a connection to it via TCP
         **/
         InfoMessage ( fprintf (stderr, "Info        : attempting TCP linkio open to resource [%s] ...\n", name) );
-        if (method_isavailable[TCP_LINKOPS] == FALSE) {
+        if (method_isavailable[TCP_LINKOPS] == false) {
           InfoMessage ( fprintf (stderr, "Warning          : module[metlnkio.c], function [OpenLink]\n -> not compiled to drive a [%s] resource\n", LMethodNames[TCP_LINKOPS]) );
           return (ER_NO_LINK);
         } else {
@@ -588,16 +592,16 @@ char *name;
     
   }
   
-  search = TRUE;
-  found_but_unopened = FALSE;
+  search = true;
+  found_but_unopened = false;
   
-  while (search == TRUE) {
+  while (search == true) {
     /**
      ** decide whether to search database for an entry
     **/
-    if (METAsearch_database == FALSE) {
+    if (METAsearch_database == false) {
       /* dont search database, just read off current values */
-      search = FALSE; /* only do 1 check */
+      search = false; /* only do 1 check */
     } else {
       /* perform resource search */
       result = CM_DoSearch ();
@@ -607,7 +611,7 @@ char *name;
           case STATUS_BAD_TARGET_NAME:
             (void) CM_EndSearch ();
             ErrorMessage (fprintf (stderr, "%s", conlib_errorstring) );
-            if (found_but_unopened == TRUE) {
+            if (found_but_unopened == true) {
               ErrorMessage (fprintf(stderr, "Error       : can't access resource [%s]\n", name) );
             } else {
               ErrorMessage (fprintf (stderr, "Error       : can't find resource [%s]\n", name) );
@@ -634,12 +638,12 @@ char *name;
      ** a match has now been made, check
      ** its fields & attempt an open 
     **/
-    if (CM_GetIsWorking () == TRUE) {
+    if (CM_GetIsWorking () == true) {
       METAmethod = CM_GetLinkMethod ();
       (void) CM_GetMachine (machine);
       (void) CM_GetLinkName (linkname);
       
-      if (method_isavailable [METAmethod] == FALSE) {
+      if (method_isavailable [METAmethod] == false) {
         InfoMessage ( fprintf (stderr, "Warning     : connection database weirdness, at line [%d]\n -> not compiled to drive a [%s] resource\n", CM_GetLineNumber (), LMethodNames[METAmethod]) );
         return (ER_LINK_SYNTAX);
       } else {
@@ -647,8 +651,8 @@ char *name;
          ** deduce whether to access by TCP or by local driver.
          ** Again, we only call gethostname() if we can't be sure its a local resource
          **/
-        if ( StringCaseCmp (machine, "localhost") == TRUE) {
-          local_resource = TRUE;
+        if ( StringCaseCmp (machine, "localhost") == true) {
+          local_resource = true;
         } else {
           /**
            ** I suppose we can call gethostname() now !
@@ -658,22 +662,22 @@ char *name;
             return (ER_LINK_SOFT);
           }
           
-          if (StringCaseCmp (machine, hostname) == TRUE) {
-            local_resource = TRUE;
+          if (StringCaseCmp (machine, hostname) == true) {
+            local_resource = true;
           } else {
-            local_resource = FALSE;
+            local_resource = false;
           }
         } 
       
-        if ((local_resource == TRUE) && (METAmethod == TCP_LINKOPS)) {
+        if ((local_resource == true) && (METAmethod == TCP_LINKOPS)) {
           InfoMessage ( fprintf (stderr, "Warning     : connection database weirdness, at line [%d]\n -> can't access local resource via TCP\n", CM_GetLineNumber) );
         } else {
           /**
            ** ok so far, attempt to open connection
           **/
-          found_but_unopened = TRUE;
+          found_but_unopened = true;
            
-          if ((METAmethod == TCP_LINKOPS) || (local_resource == FALSE) ){
+          if ((METAmethod == TCP_LINKOPS) || (local_resource == false) ){
 #ifdef LNKtcp
             char full_name[129];
              
@@ -691,10 +695,10 @@ char *name;
             result = (*openlink_vector[METAmethod].function) (linkname);
           }
           if (result >= 0) {
-            search = FALSE;              /* opened connection ok */
+            search = false;              /* opened connection ok */
           } else {
-            if (METAsearch_database == TRUE) {
-              found_but_unopened = TRUE; /* failed to open, try another */
+            if (METAsearch_database == true) {
+              found_but_unopened = true; /* failed to open, try another */
             } else {
               METAmethod = HW_X;
               return (ER_LINK_CANT);    /* failed to open, return */
@@ -705,7 +709,7 @@ char *name;
     }
   }
   
-  if (METAsearch_database == TRUE) {
+  if (METAsearch_database == true) {
     (void) CM_EndSearch ();
   }
 
@@ -719,7 +723,7 @@ int linkid;
 {
   int result;
   result = (*closelink_vector[METAmethod].function) (linkid);
-  METAsearch_database = TRUE;
+  METAsearch_database = true;
   METAmethod = HW_X;
   return (result);
 }

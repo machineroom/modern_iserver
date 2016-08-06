@@ -28,6 +28,7 @@
 /* This can be OR'ed in with the switch number */
 #define NO_PARA 0x0800
 
+#define MAXARG       50
 
 
 /* Structures and types */
@@ -46,9 +47,8 @@ extern int FullArgc;
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-extern void ParseCommandLine();
-extern void InitArgs();
-extern void SpCmdArg();
-#endif /* PROTOTYPES */
+extern void ParseCommandLine(void);
+extern void InitArgs(void);
+extern void SpCmdArg(void);
+extern void MakeCommandLine(int argc, char *argv[]);
+

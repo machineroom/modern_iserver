@@ -11,46 +11,51 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "pack.h"
 #include "sh.h"
 #include "parsecl.h"
-
+#include "misc.h"
+#include <string.h>
+#include <stdlib.h>
+    
 char *FullArgv[MAXARG];
 bool ServerArg[MAXARG];
 int  FullArgc;
 
 static struct CL_OPT opts[] = {
-                                 {"sa", FALSE, OPT_ANALYSE},
-                                 {"sb", TRUE,  OPT_BOOT},   
-                                 {"sc", TRUE,  OPT_COPY},
-                                 {"se", FALSE, OPT_ERROR},
-                                 {"si", FALSE, OPT_INFO}, 
-                                 {"sk", TRUE,  OPT_RETRY},
-                                 {"sl", TRUE,  OPT_LINK},
-                                 {"P", TRUE,  OPT_LINK},
-                                 {"sm", FALSE, OPT_SESSION},
-                                 {"sp", TRUE,  OPT_CORESIZE},
-                                 {"sr", FALSE, OPT_RESET},   
-                                 {"ss", FALSE, OPT_SERVE},
-                                 {"st", FALSE, OPT_IGNOREREST},
-                                 {"sz1", FALSE, OPT_OPSINFO},
-                                 {"sz2", FALSE, OPT_OPSDEBUG},
-                                 {"sz", FALSE, OPT_VERBOSE},
+                                 {"sa", false, OPT_ANALYSE},
+                                 {"sb", true,  OPT_BOOT},   
+                                 {"sc", true,  OPT_COPY},
+                                 {"se", false, OPT_ERROR},
+                                 {"si", false, OPT_INFO}, 
+                                 {"sk", true,  OPT_RETRY},
+                                 {"sl", true,  OPT_LINK},
+                                 {"P", true,  OPT_LINK},
+                                 {"sm", false, OPT_SESSION},
+                                 {"sp", true,  OPT_CORESIZE},
+                                 {"sr", false, OPT_RESET},   
+                                 {"ss", false, OPT_SERVE},
+                                 {"st", false, OPT_IGNOREREST},
+                                 {"sz1", false, OPT_OPSINFO},
+                                 {"sz2", false, OPT_OPSDEBUG},
+                                 {"sz", false, OPT_VERBOSE},
                                  {NULL, 0, 0}
                               };
+
+static int nextopt(int argc, char **argv, int *optinfo, char *buff);
 
 static bool QuotedArg(str)
 char           *str;
 {
    while (*str) {
       if ((*str == ' ') || (*str == '\t'))
-         return TRUE;
+         return true;
 
       str++;
    }
 
-   return FALSE;
+   return false;
 }
 
 /* InitArgs -- Initialise arg strings */
-void InitArgs()
+void InitArgs(void)
 {
    int   arg;
    
@@ -70,10 +75,10 @@ char *str;
 }
 
 /* ParseCommandLine -- see if you can guess */
-void ParseCommandLine()
+void ParseCommandLine(void)
 {
    int   arg;
-   bool  looking=TRUE;
+   bool  looking=true;
    int   opt=1;
    int   token;
    char  para[MAX_STRING_LENGTH];
@@ -107,7 +112,7 @@ void ParseCommandLine()
    }
    
    for (arg=0; arg<FullArgc; arg++)
-      ServerArg[arg] = TRUE;  /* Assume it is, until we decide otherwise */
+      ServerArg[arg] = true;  /* Assume it is, until we decide otherwise */
       
    while (opt < FullArgc) {
       token = nextopt(FullArgc, FullArgv, &opt, para);
@@ -128,7 +133,7 @@ void ParseCommandLine()
             break;
             
          case NO_OPT:
-            ServerArg[opt-1] = FALSE;
+            ServerArg[opt-1] = false;
             break;
             
          case OPT_ANALYSE:
@@ -188,7 +193,7 @@ void ParseCommandLine()
             
          case OPT_IGNOREREST:
             for (i=opt; i<FullArgc; i++)
-               ServerArg[i] = FALSE;
+               ServerArg[i] = false;
             opt=FullArgc;
             break;
             
@@ -239,7 +244,7 @@ void ParseCommandLine()
 
 /* SpCmdArg -- Give the server a command line argument */
 
-void SpCmdArg()
+void SpCmdArg(void)
 {
    int   argno;
    int   length;
@@ -284,9 +289,9 @@ char c2;
       c2 = tolower(c2);
       
    if (c1 == c2)
-      return TRUE;
+      return true;
       
-   return FALSE;
+   return false;
 }
 
 bool isopt(s1, s2)
@@ -298,13 +303,13 @@ char *s2;
    int   i;
    
    if (len1 != len2)
-      return FALSE;
+      return false;
       
    for (i=0; i<len2; i++)
       if (compch(s1[i], s2[i]) == 0)
-         return FALSE;
+         return false;
          
-   return TRUE;
+   return true;
 }
 
 int nextopt(argc, argv, optinfo, buff)
@@ -331,7 +336,7 @@ char *buff;
       str = argstr;
       for (i=0; opts[i].optstr != NULL; i++)
          if (isopt(argstr, opts[i].optstr)) {
-            if (opts[i].para == FALSE)
+            if (opts[i].para == false)
                return opts[i].token;
             
             strcpy(buff, opts[i].optstr);
@@ -372,9 +377,7 @@ char *buff;
  * MakeCommandLine --- Take argc and argv and build RealCommandLine
  */
 
-void MakeCommandLine(argc, argv)
-int argc;
-char *argv[];
+void MakeCommandLine(int argc, char *argv[])
 {
    bool  Quoted;
    char  *c;
@@ -388,11 +391,11 @@ char *argv[];
       }
 
       if (QuotedArg(*argv)) {
-         Quoted = TRUE;
+         Quoted = true;
          (void) strcat(RealCommandLine, "\"");
       }
       else
-         Quoted = FALSE;
+         Quoted = false;
 
       (void) strcat(RealCommandLine, *argv);
       if (Quoted)

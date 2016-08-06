@@ -4,6 +4,8 @@
 static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 
 #include <stdio.h>
+#include <unistd.h>
+
 #include "server.h"
 #include "iserver.h"
 #include "misc.h"
@@ -15,7 +17,7 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
  * Boot  -  copy the boot file to the link
  */
 
-void     Boot()
+void     Boot(void)
 {
    FILE            *fd;
    char            buffer[BOOT_BUFFER_LENGTH];
@@ -41,7 +43,7 @@ void     Boot()
       ops_res = OPS_BootWrite(ConnId, buffer, (unsigned long) length);
 
       if (ops_res != STATUS_NOERROR) {
-         sprintf(ErrMsg,"Boot: write failed after %d bytes because:\n   %s\n",
+         sprintf(ErrMsg,"Boot: write failed after %ld bytes because:\n   %s\n",
                            size, lnkops_errorstring);
          close_server(MISC_EXIT, ErrMsg);
       }

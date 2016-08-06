@@ -23,6 +23,9 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include <posix.h>
 #endif
 
+#include <stdlib.h>
+#include <unistd.h>
+
 #include "server.h"
 #include "iserver.h"
 #include "sh.h"
@@ -33,7 +36,9 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "boot.h"
 #include "linkops.h"
 #include "opserror.h"
-
+#include "ttyio.h"
+#include "types.h"
+#include "debug.h"
 
 /* Buffer for all server operations */
 unsigned char   Tbuf[TRANSACTION_BUFFER_SIZE];
@@ -261,7 +266,7 @@ char *argv[];
    ops_res = OPS_CommsSynchronous(ConnId);
    
    if ((ops_res != STATUS_NOERROR) && (ops_res != STATUS_TARGET_ERROR)) {
-      sprintf(ErrMsg, lnkops_errorstring);
+      sprintf(ErrMsg, "%s", lnkops_errorstring);
       
       close_server(MISC_EXIT, ErrMsg);
    }

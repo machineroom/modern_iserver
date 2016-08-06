@@ -7,13 +7,8 @@
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
+extern void close_server(int exit_code, char *msg);
+extern void infomsg(char *fmt, ...);
+extern void dbgmsg(char *fmt, ...);
+extern void SpFail(int failcode);
 
-extern void close_server();
-extern void infomsg();
-extern void dbgmsg();
-extern void SpFail();
-extern char *strdup();
-
-#endif /* PROTOTYPES */

@@ -19,7 +19,7 @@
 --
 -----------------------------------------------------------------------------*/
 
-/* needs types.h definition of BOOL */
+#include <stdbool.h>
 
 /* use to obtain error message */
 extern char conlib_errorstring[1024];
@@ -30,7 +30,7 @@ extern void CM_EndSearch ();
 extern unsigned char CM_DoSearch ();
 extern int CM_GetLineNumber ();
 extern void CM_GetResource ();
-extern BOOL CM_GetIsWorking ();
+extern bool CM_GetIsWorking ();
 extern void CM_GetMachine ();
 extern void CM_GetLinkName ();
 extern int CM_GetLinkMethod ();

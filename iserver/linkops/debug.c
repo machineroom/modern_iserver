@@ -18,30 +18,29 @@
 static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 
 #include <stdio.h>
+#include "debug.h"
 
-#include "types.h"
-
-BOOL debug_davee_lux = FALSE;
-BOOL info_davee_lux = FALSE;
+bool debug_davee_lux = false;
+bool info_davee_lux = false;
 
 void SetDebugMode (value)
-BOOL value;
+bool value;
 {
   debug_davee_lux = value;
 }
 
-BOOL GetDebugMode ()
+bool GetDebugMode ()
 {
   return (debug_davee_lux);
 }
 
 void SetInfoMode (value)
-BOOL value;
+bool value;
 {
   info_davee_lux = value;
 }
 
-BOOL GetInfoMode ()
+bool GetInfoMode ()
 {
   return (info_davee_lux);
 }

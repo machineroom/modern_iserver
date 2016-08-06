@@ -11,11 +11,12 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "pack.h"
 #include "misc.h"
 
+#include "serverc.h"
 /*
  * SpCommand
  */
 
-void            SpCommand()
+void            SpCommand(void)
 {
    bool            All;
    int             Size;
@@ -24,10 +25,10 @@ void            SpCommand()
    InBuf = &Tbuf[3];
    OutBuf = &Tbuf[2];
    OutCount = 0;
-   All = get_8()?TRUE:FALSE;
+   All = get_8()?true:false;
    dbgmsg("%d", (int) All);
 
-   if (All == TRUE)
+   if (All == true)
       Cl = RealCommandLine;
    else
       Cl = DoctoredCommandLine;

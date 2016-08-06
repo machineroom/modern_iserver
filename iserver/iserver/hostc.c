@@ -19,6 +19,10 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include <termios.h>
 #endif
 
+#ifdef LINUX
+#include <stdlib.h>
+#endif
+
 #ifdef VMS
 #include <ssdef.h>
 #include <iodef.h>
@@ -42,6 +46,7 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "linkops.h"
 #include "opserror.h"
 #include "hbeat.h"
+#include "hostc.h"
 
 #define NOKEY   -1
 
@@ -53,7 +58,7 @@ static char     KeyBuf[4]={2,0,ER_AKEYREPLY,0};
  * SpGetKey
  */
 
-void            SpGetkey()
+void            SpGetkey(void)
 {
    char           c;
    unsigned char  ops_res;
@@ -108,7 +113,7 @@ int DoHeartBeat()
  * SpPollkey
  */
 
-void            SpPollkey()
+void            SpPollkey(void)
 {
    dbgmsg("SP.POLLKEY");
    InBuf = &Tbuf[3];
@@ -139,7 +144,7 @@ void            SpPollkey()
  * SpGetenv
  */
 
-void            SpGetenv()
+void            SpGetenv(void)
 {
    char  *Name;
    char  *getenv();
@@ -183,7 +188,7 @@ void            SpGetenv()
  * SpTime
  */
 
-void            SpTime()
+void            SpTime(void)
 {
    long            Time, UTCTime;
 
@@ -265,7 +270,7 @@ void            SpTime()
 /*
  * SpSystem
  */
-void            SpSystem()
+void            SpSystem(void)
 {
    char           *Command;
    long            Status = 0L;
@@ -327,7 +332,7 @@ void            SpSystem()
  * SpExit
  */
 
-int             SpExit()
+int             SpExit(void)
 {
    long            Status;
    dbgmsg("SP.EXIT");
@@ -354,7 +359,7 @@ int             SpExit()
  * SpTranslate
  */
 
-void SpTranslate()
+void SpTranslate(void)
 {
    char  *name;
    long  offset;

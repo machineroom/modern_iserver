@@ -5,7 +5,6 @@
 
 /* Macros */
 
-#define MAXARG       50
 #define MAXCMDS      256
 
 #define OK           1
@@ -21,9 +20,7 @@ extern jmp_buf  SafePlace;
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-extern int makeargs();
-extern void freeargs();
-extern int addarg();
-#endif /* PROTOTYPES */
+extern int makeargs(char *cmdline, char **argv);
+extern void freeargs(int argc, char **argv);
+extern int addarg(int argc, char **argv, char *newarg, int max);
+

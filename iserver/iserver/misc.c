@@ -8,6 +8,8 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #ifdef MSDOS
 #include <time.h>
 #endif
+#include <stdarg.h>
+#include <stdlib.h>
 
 #include "server.h"
 #include "iserver.h"
@@ -16,6 +18,8 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "files.h"
 #include "linkops.h"
 #include "opserror.h"
+#include "pack.h"
+#include "ttyio.h"
 
 void close_server(exit_code, msg)
 int exit_code;
@@ -28,7 +32,7 @@ char *msg;
       errout = stderr;
    
    fprintf(errout,"\nError - %s - ", PROGRAM_NAME);
-   fprintf(errout, msg);
+   fprintf(errout, "%s", msg);
    fputs(".\n", errout);
    
    /* If we're in the Session shell, we just want to
@@ -47,20 +51,20 @@ char *msg;
    exit(exit_code);
 }
 
-void infomsg(fmt, a, b, c, d, e, f, g)
-char *fmt;
-long a, b, c, d, e, f, g;
+void infomsg(char *fmt, ...)
 {
    if (VerboseSwitch) {
-      printf(fmt, a, b, c, d, e, f, g);
-  
+      
+      va_list argptr;
+      va_start(argptr, fmt);
+      vfprintf(stdout, fmt, argptr);
+      va_end(argptr);
+ 
       fflush(stdout);
    }
 }
 
-void dbgmsg(fmt, a, b, c, d, e, f, g)
-char *fmt;
-long a, b, c, d, e, f, g;
+void dbgmsg(char *fmt, ...)
 {
    char  eom;
    
@@ -68,7 +72,10 @@ long a, b, c, d, e, f, g;
       eom = (VerboseSwitch)?'\n':' ';
    
       fputs("(", stdout);
-      printf(fmt, a, b, c, d, e, f, g);
+      va_list argptr;
+      va_start(argptr, fmt);
+      vfprintf(stdout, fmt, argptr);
+      va_end(argptr);
       printf(")%c", eom);
 
       fflush(stdout);

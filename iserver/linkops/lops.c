@@ -50,7 +50,7 @@ static char *CMS_Id = "LINKOPS_H:LOPS_C.AAAA-FILE;1(15-JAN-92)";
  **/
 
 /* from metalnkio.c */
-extern BOOL METAsearch_database;
+extern bool METAsearch_database;
 extern int METAmethod;
 
 /* link level timeouts (in 10ths of second) */
@@ -79,9 +79,9 @@ char *link_name;
   int linkid;
   DebugMessage (fprintf (stderr, "[LOPS_Open\n") );
   
-  METAsearch_database = FALSE;
+  METAsearch_database = false;
   linkid = OpenLink (resource_name);
-  METAsearch_database = TRUE;
+  METAsearch_database = true;
   
   *localmethod = METAmethod;
   
@@ -507,24 +507,24 @@ enum ErrorModes errormode;
 {
   int result, size, bytes_read, bytes_to_read, wait_time;
   int nread;
-  BOOL got_header = FALSE;
-  BOOL do_heartbeat;
+  bool got_header = false;
+  bool do_heartbeat;
   
   DebugMessage (fprintf (stderr, "[LOPS_GetRequest\n") );
   
   if (heartbeat_fn == NULL) {
     DebugMessage (fprintf (stderr, "Debug       : no heartbeat function\n") );
-    do_heartbeat = FALSE;
+    do_heartbeat = false;
     wait_time = IOBIG_TIMEOUT;
   } else {
-    do_heartbeat = TRUE;
+    do_heartbeat = true;
     wait_time = ((int) (timeout / 100000L));
     if (wait_time <  1) {
       wait_time = 1;
     }
   }
   
-  while (got_header == FALSE) {
+  while (got_header == false) {
     /* test error status */
     if (errormode == ERRORdetect) {
       result = TestError ((int) con_id);
@@ -543,7 +543,7 @@ enum ErrorModes errormode;
     switch (bytes_read) {
       case 0:
         /* nothing read */
-        if (do_heartbeat == TRUE) {
+        if (do_heartbeat == true) {
           DebugMessage (fprintf (stderr, "Debug       : calling heartbeat function\n") );
           switch ((*heartbeat_fn) ()) {
             case DO_HEARTBEAT:          
@@ -552,7 +552,7 @@ enum ErrorModes errormode;
               break;
               
             case KILL_HEARTBEAT:
-              do_heartbeat = FALSE;
+              do_heartbeat = false;
               DebugMessage (fprintf (stderr, "Debug       : disable heartbeat\n") );
               break;
               
@@ -596,7 +596,7 @@ enum ErrorModes errormode;
         bytes_read = bytes_read + nread;
         if (bytes_read == 8) {
           /* header read correctly */
-          got_header = TRUE;
+          got_header = true;
         } else {
           (void) sprintf (lnkops_errorstring, " : module [lops.c], function [LOPS_GetRequest]\n -> got [%d] bytes for header\n", bytes_read);
           return (STATUS_SP_ERROR);
@@ -657,7 +657,7 @@ enum ErrorModes errormode;
     }
   }                                
 
-  if (do_heartbeat == TRUE) {
+  if (do_heartbeat == true) {
     DebugMessage (fprintf (stderr, "Debug       : calling heartbeat function\n") );
     switch ((*heartbeat_fn) ()) {
       case DO_HEARTBEAT:          
@@ -666,7 +666,7 @@ enum ErrorModes errormode;
         break;
         
       case KILL_HEARTBEAT:
-        do_heartbeat = FALSE;
+        do_heartbeat = false;
         wait_time = 0L;
         DebugMessage (fprintf (stderr, "Debug       : disable heartbeat\n") );
         break;

@@ -17,7 +17,7 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
 
 #define VERSION_ID ((MAJOR_ID*10)+(MINOR_ID/10))
 
-#include "srvtypes.h"
+#include <stdbool.h>
 #include "sp.h"
 
 #define TRANSACTION_BUFFER_SIZE   4096
@@ -40,7 +40,9 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
 #ifndef SUN
 #ifndef SOLARIS
 #ifndef SGI
+#ifndef LINUX
 #define UNDEFINED_HOST
+#endif
 #endif
 #endif
 #endif
@@ -67,6 +69,10 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
 #include "vms.h"
 #endif
 
+#ifdef LINUX
+#include "bsd.h"
+#endif
+
 #ifdef UNDEFINED_HOST
 #include "nohost.h"
 #endif
@@ -82,6 +88,7 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
 #define BOX_SUN386 7
 #define BOX_APOLLO 8
 #define BOX_SGI    9
+#define BOX_LINUX  10
 
 #define OS_X       0
 #define OS_DOS     1
@@ -89,6 +96,8 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
 #define OS_VMS     3
 #define OS_SUN40   4
 #define OS_CMS     5
+#define OS_LINUX   6
+
 
 #ifdef sun3
 #define HOST         "Sun3/SunOS4"
@@ -153,6 +162,12 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
 #define HOST         "HELIOS 1.0"
 #define HOST_ID      BOX_X
 #define OS_ID        OS_HELIOS
+#endif
+
+#ifdef LINUX
+#define HOST         "Linux"
+#define HOST_ID      BOX_LINUX
+#define OS_ID        OS_LINUX
 #endif
 
 #ifndef HOST_ID

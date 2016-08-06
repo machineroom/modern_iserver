@@ -10,3 +10,6 @@
 #define INFO_SERVERMAJ     5
 #define INFO_SERVERMIN     6
 #define INFO_PKTSIZE       7
+
+extern void SpGetInfo(void);
+

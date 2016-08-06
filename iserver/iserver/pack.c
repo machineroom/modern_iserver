@@ -112,12 +112,12 @@ unsigned char *buff;
    OutCount += len+2;
 }
 
-unsigned char get_8()
+unsigned char get_8(void)
 {
    return *InBuf++;
 }
 
-unsigned int get_16()
+unsigned int get_16(void)
 {
    int                    res;
    register unsigned char *cp;
@@ -136,7 +136,7 @@ unsigned int get_16()
    return res;
 }
 
-unsigned long get_32()
+unsigned long get_32(void)
 {
    long                   res=0L;
    register unsigned char *cp;

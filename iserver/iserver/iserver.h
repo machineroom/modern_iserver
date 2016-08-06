@@ -35,6 +35,5 @@ extern long          ProcId;
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-#endif /* PROTOTYPES */
+extern int server_proper(int argc, char *argv[]);
+

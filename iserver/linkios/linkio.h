@@ -18,6 +18,15 @@
 #define ER_NO_LINK      -7
 #define ER_LINK_SYNTAX  -8
 
+//jawilso3 added 
+extern int OpenLink(char *Name);
+extern int CloseLink(int LinkId);
+extern int ReadLink(int LinkId, char *Buffer, unsigned int Count, int Timeout);
+extern int WriteLink(int LinkId, char *Buffer, unsigned int Count, int Timeout);
+extern int ResetLink(int LinkId);
+extern int AnalyseLink(int LinkId);
+extern int TestError(int LinkId);
+
 /* Now all the external declarations */
 
 #ifdef LNKb004

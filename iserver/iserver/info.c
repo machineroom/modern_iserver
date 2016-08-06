@@ -7,8 +7,13 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "iserver.h"
 #include "pack.h"
 #include "info.h"
+#include "misc.h"
 
-SpGetInfo()
+#include <string.h>
+#include <stdio.h>
+
+
+void SpGetInfo(void)
 {
    unsigned char  item;
    int            replymax;

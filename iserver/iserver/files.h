@@ -71,12 +71,11 @@ extern char   *OpenModes[N_ORGS][6];
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-extern void CloseOpenFiles();
-extern void SetupFiles();
-extern void DupStdStreams();
-extern long RememberFile();
-extern int ForgetFile();
-extern FILE *FindFileDes();
-#endif /* PROTOTYPES */
+extern int OpenFiles(char *in, char *out, char *err);
+extern void CloseOpenFiles(void);
+extern void SetupFiles(void);
+extern void DupStdStreams(void);
+extern long RememberFile(FILE *fd, int org);
+extern int ForgetFile(long fileid);
+extern FILE *FindFileDes(long fileid, int *org);
+

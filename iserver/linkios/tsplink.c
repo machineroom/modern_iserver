@@ -15,6 +15,7 @@ static char *ident = "@(#)tsplink.c	1.11";
 #include "linkio.h"
 #include "linkops.h"
 #include "tsplib.h"
+#include <string.h>
 
 #define NULL_LINK          -1
 

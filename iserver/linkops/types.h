@@ -15,9 +15,6 @@
 --
 ------------------------------------------------------------------------------*/
      
-typedef int BOOL;
-#define TRUE  ((BOOL) 1)
-#define FALSE ((BOOL) 0)
 #define NUL '\0'
 #define NULSTRING "\0"
 

@@ -77,6 +77,10 @@ static char SccsId[] = "@(#) Module: tcplink.c, revision 1.4 of 6/26/91";
 extern int errno;
 #endif
 
+#ifdef LINUX
+#include <unistd.h>
+#endif
+
 #define ONESECOND 1000000L
 #define TSERIES_PROCESSORID 0L
 
@@ -105,7 +109,7 @@ static unsigned char response_buffer[OPSMAXPACKET + OPSMAXOVERHEADS];
 /* reflects protocol state */
 static enum ProtocolStates TOPSprotocolstate = Closed;
 
-static BOOL LinkIsOpen = FALSE;
+static bool LinkIsOpen = false;
 
 /* used to calculate 32 bit int parameters */
 static union {
@@ -355,9 +359,9 @@ unsigned char *buffer;
 {
   unsigned char response_tag;
   int result, extra_to_read, bytes_read, packet_size;
-  BOOL got_wanted_tag = FALSE;
+  bool got_wanted_tag = false;
   
-  while (got_wanted_tag == FALSE) {
+  while (got_wanted_tag == false) {
   
     /* read header of linkops response message */
     result = DoSocketRead (socket, OPSMIN_RESPONSEMESSAGESIZE, (unsigned char *)&response_buffer[0]);
@@ -382,7 +386,7 @@ unsigned char *buffer;
     DebugMessage (fprintf (stderr, "Debug       : got tag        [%d]\n", response_tag) );
     DebugMessage (fprintf (stderr, "Debug       : got packetsize [%d]\n", packet_size) );  
     
-    if (got_wanted_tag == FALSE) {
+    if (got_wanted_tag == false) {
       /* only synchronous mode response capable of handling (apart from
          the one we are waiting & OEVENT_MESSAGE is an error */
       if (response_tag == OEVENT_Message) {
@@ -453,9 +457,9 @@ unsigned char wanted_tag;
   enum TimedStatus timed_result;
   unsigned char response_tag;
   int result, extra_to_read, bytes_read, packet_size;
-  BOOL got_reply = FALSE;
+  bool got_reply = false;
   
-  while (got_reply == FALSE) {
+  while (got_reply == false) {
     /* read header of linkops response message */
     timed_result = DoTimedSocketRead (socket, OPSMIN_RESPONSEMESSAGESIZE, WAIT_TIMEOUT, (unsigned char *)&response_buffer[0]);
     
@@ -528,7 +532,7 @@ char *Name;
   
   DebugMessage (fprintf (stderr, "(tcplink.c)TCPOpenLink[\n") );
   
-  if (LinkIsOpen == TRUE) {
+  if (LinkIsOpen == true) {
     ErrorMessage ( fprintf (stderr, " : module [tcplink.c], function [TCPOpenLink]\n -> link already open\n") );
     return (ER_LINK_CANT);
   }
@@ -550,16 +554,16 @@ char *Name;
    ** and internal_machine parts
   **/
   {
-    BOOL strip_resource, strip_machine;
+    bool strip_resource, strip_machine;
     int i,j;
     
     internal_resourcename[0] = NUL;
     internal_machinename[0] = NUL;
     
-    strip_resource = TRUE;
-    strip_machine = FALSE;
+    strip_resource = true;
+    strip_machine = false;
     i = 0;
-    while (strip_resource == TRUE) {
+    while (strip_resource == true) {
       if (i > 64) {                                 
         ErrorMessage ( fprintf (stderr, " : null resource name given\n") );
         return (ER_LINK_SYNTAX);
@@ -570,7 +574,7 @@ char *Name;
           ErrorMessage ( fprintf (stderr, " : null resource name given\n") );
           return (ER_LINK_SYNTAX);
         } else {
-          strip_resource = FALSE; 
+          strip_resource = false; 
         }
         
       } else {
@@ -581,8 +585,8 @@ char *Name;
             return (ER_LINK_SYNTAX);
           } else {
             internal_resourcename[i] = NUL;
-            strip_resource = FALSE;
-            strip_machine = TRUE;
+            strip_resource = false;
+            strip_machine = true;
             i++;
           }
         
@@ -593,12 +597,12 @@ char *Name;
       }
     }
    
-    if (strip_machine == FALSE) {
+    if (strip_machine == false) {
       ErrorMessage ( fprintf (stderr, " : null machine name after @\n") );
       return (ER_LINK_SYNTAX);
     } else {
       j = 0;
-      while (strip_machine == TRUE) {
+      while (strip_machine == true) {
         if (j > 64) {
           DebugMessage (fprintf (stderr, "Debug       : machine name too long\n") );
           ErrorMessage ( fprintf (stderr, " : machine name too long\n") );
@@ -612,7 +616,7 @@ char *Name;
             return (ER_LINK_SYNTAX);
           } else {
             internal_machinename[j] = NUL;
-            strip_machine = FALSE;
+            strip_machine = false;
           }
           
         } else {
@@ -877,7 +881,7 @@ char *Name;
   
   /* modify protocol state */
   TOPSprotocolstate = Synchronous;
-  LinkIsOpen = TRUE;
+  LinkIsOpen = true;
   
   DebugMessage (fprintf (stderr, "](tcplink.c)TCPOpenLink\n") );
   return (sock);
@@ -893,7 +897,7 @@ int LinkId;
   
   DebugMessage (fprintf (stderr, "[(tcplink.c)TCPCloseLink\n") );
   
-  if (LinkIsOpen == FALSE) {
+  if (LinkIsOpen == false) {
     ErrorMessage ( fprintf (stderr, " : module [tcplink.c], function [TCPCloseLink]\n -> link not open\n") );
     return (ER_LINK_CANT);
   }
@@ -924,7 +928,7 @@ int LinkId;
       (void) shutdown (LinkId, 2);
       (void) close (LinkId);
       TOPSprotocolstate = Closed;
-      LinkIsOpen = FALSE;
+      LinkIsOpen = false;
       DebugMessage (fprintf (stderr, "](tcplink.c)TCPCloseLink\n") );
       return (SUCCEEDED);
       break;
@@ -940,7 +944,7 @@ int LinkId;
     (void) shutdown (LinkId, 2);
     (void) close (LinkId);
     TOPSprotocolstate = Closed;
-    LinkIsOpen = FALSE;
+    LinkIsOpen = false;
     return (SUCCEEDED);
   }    
   
@@ -979,7 +983,7 @@ int LinkId;
   (void) shutdown (LinkId, 2);
   (void) close (LinkId);
   TOPSprotocolstate = Closed;
-  LinkIsOpen = FALSE;
+  LinkIsOpen = false;
   DebugMessage (fprintf (stderr, "](tcplink.c)TCPCloseLink\n") );
   return (SUCCEEDED);
 }
@@ -1326,7 +1330,7 @@ int LinkId;
   int result;
   
   DebugMessage (fprintf (stderr, "[(tcplink.c)TCPTestRead\n") );
-  if (LinkIsOpen == TRUE) {
+  if (LinkIsOpen == true) {
     result = 0; /* may or may not be able to read 1 byte */
   } else {
     ErrorMessage ( fprintf (stderr, " : module [tcplink.c], function [TCPTestRead]\n -> link not open\n") );
@@ -1343,7 +1347,7 @@ int LinkId;
   int result;
   
   DebugMessage (fprintf (stderr, "[(tcplink.c)TCPTestWrite\n") );
-  if (LinkIsOpen == TRUE) {
+  if (LinkIsOpen == true) {
     result = 0; /* may or may not be able to write 1 byte */
   } else {
     result = ER_LINK_BAD; /* link is not open */

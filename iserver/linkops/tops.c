@@ -63,6 +63,13 @@ extern int uerrno;
 #define ERRNO errno
 #endif
 
+#ifdef LINUX
+#include <errno.h>
+#define ERRNO errno
+#include <stdlib.h>
+#include <unistd.h>
+#endif
+
 #ifdef PCNFS
 /* #include "pcntypes.h" */  /* PC-NFS Toolkit v2.0 has these defined */
 #include <sys/tk_types.h>    /* PC-NFS Toolkit v2.0 defines */
@@ -176,7 +183,7 @@ static unsigned char response_buffer[OPSMAXPACKET + OPSMAXOVERHEADS];
 /* reflects protocol state */
 static enum ProtocolStates TOPSprotocolstate = Closed;
 /* reflects ErrorMode */
-static BOOL TOPSerrordetect = FALSE;
+static bool TOPSerrordetect = false;
 
 struct SPBuffer {
   int spsize;
@@ -535,7 +542,7 @@ int packet_size;
     (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [HandleErrorTransition]\n");
     return (result);
   }      
-  if (TOPSerrordetect == FALSE) {
+  if (TOPSerrordetect == false) {
     (void) sprintf (lnkops_errorstring, " : module [tops.c], function [HandleErrorTransition]\n -> not in error detect mode\n");
     return (STATUS_COMMS_FATAL);
   }
@@ -549,7 +556,7 @@ int packet_size;
     return (STATUS_COMMS_FATAL);
   }
   /* check if error flag was set */
-  if ((BOOL) response_buffer[OEVENTERRORTRANS_state] ==  ((unsigned char) 1)) {
+  if ((bool) response_buffer[OEVENTERRORTRANS_state] ==  ((unsigned char) 1)) {
     DebugMessage (fprintf (stderr, "Debug       : transputer error flag set\n") );
     return (STATUS_TARGET_ERROR);
   } else {
@@ -576,9 +583,9 @@ unsigned char *buffer;
 {
   unsigned char result, response_tag;
   int extra_to_read, bytes_read, packet_size;
-  BOOL got_wanted_tag = FALSE;
+  bool got_wanted_tag = false;
   
-  while (got_wanted_tag == FALSE) {
+  while (got_wanted_tag == false) {
     /* read header of linkops response message */
     result = DoSocketRead (sock, OPSMIN_RESPONSEMESSAGESIZE, (unsigned char *)&response_buffer[0]);
     if (result != STATUS_NOERROR) {
@@ -603,7 +610,7 @@ unsigned char *buffer;
     DebugMessage (fprintf (stderr, "Debug       : got tag        [%d]\n", response_tag) );
     DebugMessage (fprintf (stderr, "Debug       : got packetsize [%d]\n", packet_size) );  
     
-    if (got_wanted_tag == FALSE) {
+    if (got_wanted_tag == false) {
       /* only synchronous mode response capable of handling (apart from
          the one we are waiting & OEVENT_MESSAGE is an error */
       if (response_tag == OEVENT_Message) {
@@ -786,17 +793,17 @@ int max_goes;
   unsigned char result, response_tag;
   int extra_to_read, bytes_read, packet_size, sppacketsize;
   int goes = 0;
-  BOOL got_data;
+  bool got_data;
   
   while ((max_goes == 0) || (goes < max_goes)) {
     /* read header of linkops response message */
-    got_data = FALSE;
-    while (got_data == FALSE) {
+    got_data = false;
+    while (got_data == false) {
       time_result = DoTimedSocketRead (sock, OPSMIN_RESPONSEMESSAGESIZE, timeout, (unsigned char *)&response_buffer[0]);
       switch (time_result) {
         case TIMEDSTATUSdata:
           /* data read ok so continue */
-          got_data = TRUE;
+          got_data = true;
           break;
       
         case TIMEDSTATUSnodata:
@@ -893,7 +900,7 @@ int max_goes;
           (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [GetAsyncRequest]\n");
           return (result);
         }      
-        got_data = TRUE;
+        got_data = true;
         return (result);
         break;
         
@@ -934,9 +941,9 @@ int sock;
 {
   unsigned char result, response_tag;
   int extra_to_read, bytes_read, packet_size;
-  BOOL got_commssync_reply = FALSE;
+  bool got_commssync_reply = false;
   
-  while (got_commssync_reply == FALSE) {
+  while (got_commssync_reply == false) {
     /* read header of linkops response message */
     result = DoSocketRead (sock, OPSMIN_RESPONSEMESSAGESIZE, (unsigned char *)&response_buffer[0]);
     if (result != STATUS_NOERROR) {
@@ -961,7 +968,7 @@ int sock;
     
     switch (response_tag) {
       case OREPLY_CommsSynchronous:
-        got_commssync_reply = TRUE;
+        got_commssync_reply = true;
         break;
         
       case OEVENT_Message:
@@ -980,7 +987,7 @@ int sock;
          (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [GetCommsSynchronousReply]\n");
           return (result);
         }      
-        if (TOPSerrordetect == FALSE) {
+        if (TOPSerrordetect == false) {
           (void) sprintf (lnkops_errorstring, " : module [tops.c], function [GetCommsSynchronousReply]\n -> not in errordetect mode");
           return (STATUS_COMMS_FATAL);
         }
@@ -994,7 +1001,7 @@ int sock;
           return (STATUS_COMMS_FATAL);
         }
         /* check if error flag was set */
-        if ((BOOL) response_buffer[OEVENTERRORTRANS_state] == TRUE) {
+        if ((bool) response_buffer[OEVENTERRORTRANS_state] == true) {
           DebugMessage (fprintf (stderr, "Debug       : transputer error flag set\n") );
           return (STATUS_TARGET_ERROR);
         } else {
@@ -1029,9 +1036,9 @@ unsigned char wanted_tag;
   enum TimedStatus timed_result;
   unsigned char result, response_tag;
   int extra_to_read, bytes_read, packet_size;
-  BOOL got_reply = FALSE;
+  bool got_reply = false;
   
-  while (got_reply == FALSE) {
+  while (got_reply == false) {
     /* read header of linkops response message */
     timed_result = DoTimedSocketRead (sock, OPSMIN_RESPONSEMESSAGESIZE, WAIT_TIMEOUT, (unsigned char *)&response_buffer[0]);
     
@@ -1558,7 +1565,7 @@ char *link_name;
 /*
    modifies :
       TOPSprotocolstate = Closed;
-      TOPSerrordetect = FALSE;
+      TOPSerrordetect = false;
       TOPSnum_spbuffered = 0;
 */
 unsigned char TOPS_Close (con_id)
@@ -1596,7 +1603,7 @@ long int con_id;
       (void) shutdown ((int) con_id, 2);
       (void) close ((int) con_id);            
       TOPSprotocolstate = Closed;
-      TOPSerrordetect = FALSE;
+      TOPSerrordetect = false;
       
       result = CleanUpBufferQueue ();
       if (result != STATUS_NOERROR) {
@@ -1619,7 +1626,7 @@ long int con_id;
     (void) shutdown ((int) con_id, 2);
     (void) close ((int) con_id);
     TOPSprotocolstate = Closed;
-    TOPSerrordetect = FALSE;
+    TOPSerrordetect = false;
     result = CleanUpBufferQueue ();
     if (result != STATUS_NOERROR) {
       (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [TOPS_Close]");
@@ -1664,7 +1671,7 @@ long int con_id;
   (void) shutdown ((int) con_id, 2);
   (void) close ((int) con_id); 
   TOPSprotocolstate = Closed;
-  TOPSerrordetect = FALSE;
+  TOPSerrordetect = false;
   result = CleanUpBufferQueue ();
   if (result != STATUS_NOERROR) {
     (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [TOPS_Close]");
@@ -1851,7 +1858,7 @@ enum ErrorModes *errormode;
       return (STATUS_COMMS_FATAL);
     } else {
       *errormode = ERRORdetect;
-      TOPSerrordetect = TRUE;
+      TOPSerrordetect = true;
       DebugMessage (fprintf (stderr, "Debug       : errormode=[%d] (after)\n", *errormode) );
       DebugMessage (fprintf (stderr, "]TOPS_ErrorDetect\n") );
       return (STATUS_NOERROR);
@@ -1882,7 +1889,7 @@ enum ErrorModes *errormode;
       return (STATUS_COMMS_FATAL);
     } else {
       *errormode = ERRORignore;
-      TOPSerrordetect = FALSE;
+      TOPSerrordetect = false;
       DebugMessage (fprintf (stderr, "Debug       : errormode=[%d] (after)\n", *errormode) );
       DebugMessage (fprintf (stderr, "]TOPS_ErrorIgnore\n") );
       return (STATUS_NOERROR);
@@ -2427,7 +2434,7 @@ enum ErrorModes errormode;
 {
   long int wait_time;
   int result;
-  BOOL got_request, do_heartbeat;
+  bool got_request, do_heartbeat;
   
   DebugMessage (fprintf (stderr, "[TOPS_GetRequest\n") );
   
@@ -2439,10 +2446,10 @@ enum ErrorModes errormode;
   
   if (heartbeat_fn == NULL) {
     DebugMessage (fprintf (stderr, "Debug       : no heartbeat function\n") );
-    do_heartbeat = FALSE;
+    do_heartbeat = false;
     wait_time = 0L;
   } else {
-    do_heartbeat = TRUE;
+    do_heartbeat = true;
     wait_time = timeout;
   }
   
@@ -2453,7 +2460,7 @@ enum ErrorModes errormode;
       (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [TOPS_GetRequest](A)\n");
       return (result);
     }
-    if (do_heartbeat == TRUE) {
+    if (do_heartbeat == true) {
       DebugMessage (fprintf (stderr, "Debug       : calling heartbeat function\n") );
       switch ((*heartbeat_fn) ()) {
         case DO_HEARTBEAT:          
@@ -2462,7 +2469,7 @@ enum ErrorModes errormode;
           break;
           
         case KILL_HEARTBEAT:
-          do_heartbeat = FALSE;
+          do_heartbeat = false;
           wait_time = 0L;
           DebugMessage (fprintf (stderr, "Debug       : disable heartbeat\n") );
           break;
@@ -2482,8 +2489,8 @@ enum ErrorModes errormode;
     
   } else {
     DebugMessage (fprintf (stderr, "Debug       : no buffered request, wait for one\n") );
-    got_request = FALSE;
-    while (got_request == FALSE) {
+    got_request = false;
+    while (got_request == false) {
       /* read getrequest event */
       DebugMessage (fprintf (stderr, "Debug       : getting request event, wait_time=[%d]\n", wait_time) );
       result = GetAsyncRequest ((int) con_id, (unsigned char *)&buffer[0], wait_time, 0);
@@ -2491,7 +2498,7 @@ enum ErrorModes errormode;
         case STATUS_TIMEDOUT:
           DebugMessage (fprintf (stderr, "Debug       : didn't get request event (timedout)\n") );
           /* no data ready on socket so call heartbeat fn*/
-          if (do_heartbeat == TRUE) {
+          if (do_heartbeat == true) {
             DebugMessage (fprintf (stderr, "Debug       : calling heartbeat function\n") );
             switch ((*heartbeat_fn) ()) {
               case DO_HEARTBEAT:          
@@ -2504,12 +2511,12 @@ enum ErrorModes errormode;
                     (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [TOPS_GetRequest](B)\n");
                     return (result);
                   }               
-                  got_request = TRUE;
+                  got_request = true;
                 }
                 break;
                 
               case KILL_HEARTBEAT:
-                do_heartbeat = FALSE;
+                do_heartbeat = false;
                 if (TOPSnum_spbuffered > 0) {
                   DebugMessage (fprintf (stderr, "Debug       : after buffered requests = [%d], copy one\n", TOPSnum_spbuffered) ); 
                   result = UnQueueSPBuffer ((unsigned char *)&buffer[0]);
@@ -2517,7 +2524,7 @@ enum ErrorModes errormode;
                     (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [TOPS_GetRequest](C)\n");
                     return (result);
                   }               
-                  got_request = TRUE;
+                  got_request = true;
                 }
                 wait_time = 0L;
                 DebugMessage (fprintf (stderr, "Debug       : disable heartbeat\n") );
@@ -2538,9 +2545,9 @@ enum ErrorModes errormode;
           
         case STATUS_NOERROR:
           /* got sp request ok */
-          got_request = TRUE;
+          got_request = true;
           DebugMessage (fprintf (stderr, "Debug       : got request event\n") );
-          if (do_heartbeat == TRUE) {
+          if (do_heartbeat == true) {
             DebugMessage (fprintf (stderr, "Debug       : calling heartbeat function\n") );
             switch ((*heartbeat_fn) ()) {
               case DO_HEARTBEAT:          
@@ -2549,7 +2556,7 @@ enum ErrorModes errormode;
                 break;
                 
               case KILL_HEARTBEAT:
-                do_heartbeat = FALSE;
+                do_heartbeat = false;
                 wait_time = 0L;
                 DebugMessage (fprintf (stderr, "Debug       : disable heartbeat\n") );
                 break;
@@ -2697,7 +2704,7 @@ enum ErrorModes *errormode;
       case STATUS_NOERROR:
         /* alter protocol state */
         TOPSprotocolstate = Synchronous;
-        TOPSerrordetect = FALSE;
+        TOPSerrordetect = false;
         result = CleanUpBufferQueue ();
         *commsmode = COMMSsynchronous;
         *errormode = ERRORignore;

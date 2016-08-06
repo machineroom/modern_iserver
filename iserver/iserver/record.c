@@ -19,6 +19,10 @@ static char *CMS_Id = "ISERVER:RECORD_C.AAAA-FILE;2(02-MAR-92)[UNDER-DEVELOPMENT
 #include "vaxrms.h"
 #endif /* VMS */
 
+#ifdef LINUX
+#include <string.h>
+#endif
+
 #define CR  '\r'
 #define NL  '\n'
 #define EOF_CH(mrs) ((mrs%96)+32)    /* Will produce a printable char */
@@ -33,7 +37,7 @@ static int unform_seq_read_rec();
 static int direct_read_rec();
 #endif
 
-void SpOpenRec()
+void SpOpenRec(void)
 {
    char              fname[MAX_SLICE_LENGTH+1];
    int               namelen;
@@ -141,7 +145,7 @@ void SpOpenRec()
    info->type = filetype;
    info->recno = 0;
    info->lastop = FIOP_NONE;
-   info->pasteof = FALSE;
+   info->pasteof = false;
    
 #ifdef VMS
    info->rab = rab;
@@ -183,14 +187,14 @@ void SpOpenRec()
    put_count(OutCount);
 }
 
-void SpPutRec()
+void SpPutRec(void)
 {
    long              fileid;
    FILE              *fd;
    long              recordsize;
    int               chunksize;
    long              offset;
-   bool              dowrite=FALSE;
+   bool              dowrite=false;
    struct FILE_INFO  *info;
    int               res;
    
@@ -206,7 +210,7 @@ void SpPutRec()
    offset    = get_32();
    
    if (get_8())
-      dowrite = TRUE;
+      dowrite = true;
       
    dbgmsg("fileid=%ld, recordsize=%ld, chunksize=%d, offset=%ld, write=%d",
             fileid, recordsize, chunksize, offset, dowrite);
@@ -246,9 +250,9 @@ void SpPutRec()
    }
    
    get_slice(&(info->buff[offset]));
-   info->dirty = TRUE;
+   info->dirty = true;
    
-   if (dowrite == TRUE) {
+   if (dowrite == true) {
       info->recno++;
 #ifdef VMS
       res = vmsput(info->rab, info->buff, (int) recordsize);
@@ -256,26 +260,26 @@ void SpPutRec()
 #else
       res = info->putfn(info->fd, info->buff, recordsize);
 #endif /* VMS */
-      info->dirty = FALSE;
+      info->dirty = false;
       info->recordsize = -1;
    }
    else
       res = ER_SUCCESS;
    
    info->lastop = FIOP_WRITE;
-   info->pasteof = FALSE;
+   info->pasteof = false;
    
    put_8(res);
    put_count(OutCount);
 }
 
-void SpGetRec()
+void SpGetRec(void)
 {
    long              fileid;
    FILE              *fd;
    int               chunksize;
    long              offset;
-   bool              doread=FALSE;
+   bool              doread=false;
    struct FILE_INFO  *info;
    int               res=ER_SUCCESS;
    
@@ -290,7 +294,7 @@ void SpGetRec()
    offset    = get_32();
    
    if (get_8())
-      doread = TRUE;
+      doread = true;
       
    dbgmsg("fileid=%d, chunksize=%d, offset=%ld, doread=%d",
                fileid, chunksize, offset, doread);
@@ -315,7 +319,7 @@ void SpGetRec()
       return;
    }
       
-   if (doread == TRUE) {
+   if (doread == true) {
       info->recno++;
 #ifdef VMS
       res = vmsget(info);
@@ -359,7 +363,7 @@ struct FILE_INFO *info;
    
    nread = fread(buff, 4, 1, info->fd);
    if (nread != 1) {
-      info->pasteof = TRUE;
+      info->pasteof = true;
       return ER_EOF;
    }
       
@@ -382,7 +386,7 @@ struct FILE_INFO *info;
       bytes = (toread > MAX_CHUNK_SIZE)?MAX_CHUNK_SIZE:toread;
       nread = fread(buffer, bytes, 1, info->fd);
       if (nread != 1) {
-         info->pasteof = TRUE;
+         info->pasteof = true;
          return ER_EOF;
       }
          
@@ -392,7 +396,7 @@ struct FILE_INFO *info;
    
    nread = fread(buff, 4, 1, info->fd);
    if (nread != 1) {
-      info->pasteof = TRUE;
+      info->pasteof = true;
       return ER_EOF;
    }
       
@@ -435,7 +439,7 @@ struct FILE_INFO *info;
 #endif
       
       if (res == NULL) {
-         info->pasteof = TRUE;
+         info->pasteof = true;
          return ER_EOF;
       }
          
@@ -479,7 +483,7 @@ struct FILE_INFO *info;
       
       nread = fread(buff, bytes, 1, info->fd);
       if (nread != 1) {
-         info->pasteof = TRUE;
+         info->pasteof = true;
          return ER_EOF;
       }
          
@@ -588,8 +592,8 @@ long origin;
    struct FILE_INFO  *info = &FileInfo[fileid];
    FILE              *fd = info->fd;
    char              buffer[BUFSIZ], *buff;
-   bool              sof = FALSE;
-   bool              looking = TRUE;
+   bool              sof = false;
+   bool              looking = true;
    
    dbgmsg("form_seq_seek(%ld, %ld, %d)", fileid, offset, origin);
    
@@ -611,7 +615,7 @@ long origin;
             return ER_ERROR;
             
          rewind(fd);
-         info->pasteof = FALSE;
+         info->pasteof = false;
          info->lastop = FIOP_NONE;
          
          return ER_SUCCESS;
@@ -619,7 +623,7 @@ long origin;
       case SEEK_CUR:       /* Backspace and no movement only */
          if (offset == 0) {
             fseek(fd, 0L, SEEK_CUR);
-            info->pasteof = FALSE;
+            info->pasteof = false;
             info->lastop = FIOP_NONE;
             return ER_SUCCESS;
          }
@@ -636,7 +640,7 @@ long origin;
       if (fseek(fd, 0L, SEEK_END) == -1)
          return ER_ERROR;
 
-      info->pasteof = FALSE;
+      info->pasteof = false;
       info->lastop = FIOP_NONE;
       
       return ER_SUCCESS;
@@ -651,7 +655,7 @@ long origin;
          dbgmsg("SOF");
          
          rewind(fd);
-         looking = FALSE;
+         looking = false;
       }
       else {
          here = ftell(fd);
@@ -664,12 +668,12 @@ long origin;
             
          /* Remember if we've completely rewound the file */
          if (ftell(fd) == 0L)
-            sof = TRUE;
+            sof = true;
          
          --nbytes;
          nread = fread(buffer,1,(int) nbytes,fd);
          if (nread != (int) nbytes) {
-            looking = FALSE;
+            looking = false;
          }
             
          buff = &buffer[nread-1];
@@ -678,7 +682,7 @@ long origin;
                if (fseek(fd, -(long) i, SEEK_CUR) == -1)
                   return ER_ERROR;
                   
-               looking = FALSE;
+               looking = false;
                info->lastop = FIOP_NONE;
 
                return ER_SUCCESS;
@@ -709,7 +713,7 @@ int origin;
    /* Move to the starting record if necessary */
    if (origin == SEEK_SET) {
       rewind(info->fd);
-      info->pasteof = FALSE;
+      info->pasteof = false;
    }
    else if (origin == SEEK_END) {
       if (fseek(info->fd, 0L, SEEK_END) == -1)
@@ -731,7 +735,7 @@ int origin;
    }
    else if (offset < 0) {
       if (info->pasteof) {
-         info->pasteof = FALSE;
+         info->pasteof = false;
          offset++;
       }
       
@@ -756,7 +760,7 @@ int origin;
 }
 #endif /* VMS */
 
-void SpPutEOF()
+void SpPutEOF(void)
 {
    long              fileid;
    int               res;
@@ -806,7 +810,7 @@ void SpPutEOF()
       res = ER_ERROR;
    else {
       res = ER_SUCCESS;
-      info->pasteof = TRUE;
+      info->pasteof = true;
    }
    
    dbgmsg("EOF pos=%ld, pasteof=%d", ftell(fd), info->pasteof);
@@ -829,7 +833,7 @@ int *linelen;
    int	           len = info->lllen;
    int            bitlen = 0;
 #ifdef MSDOS
-   bool           gotCR = FALSE;
+   bool           gotCR = false;
 #endif
    
    src = (char *) info->llbuff;
@@ -868,7 +872,7 @@ int *linelen;
       if (gotCR && (ch == NL))
          break;
          
-      gotCR = (ch == CR) ? TRUE : FALSE;
+      gotCR = (ch == CR) ? true : false;
 #else
       if (ch == NL)
          break;

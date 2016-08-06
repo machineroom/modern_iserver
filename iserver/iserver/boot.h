@@ -9,7 +9,5 @@
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-extern void Boot();
-#endif /* PROTOTYPES */
+extern void Boot(void);
+

@@ -4,8 +4,13 @@
 static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 
 #include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include "server.h"
 #include "files.h"
+#include "misc.h"
 
 struct FILE_INFO FileInfo[MAX_FILES];
 char *OpenModes[N_ORGS][6]={
@@ -15,7 +20,7 @@ char *OpenModes[N_ORGS][6]={
    {BINARY_1,BINARY_2,BINARY_3,BINARY_4,BINARY_5,BINARY_6}  /* Fixed */ 
 };
 
-void CloseOpenFiles()
+void CloseOpenFiles(void)
 {
    int               i;
    int               res;
@@ -23,7 +28,7 @@ void CloseOpenFiles()
    
    for (i=0; i<MAX_FILES; i++)
       if (FileInfo[i].fd != NO_FILE) {
-         if (FileInfo[i].dirty == TRUE) {
+         if (FileInfo[i].dirty == true) {
             info = &FileInfo[i];
 #ifdef VMS
             res = vmsput(info->rab, info->buff, (int)info->recordsize);
@@ -71,7 +76,7 @@ char *err;
    
    for (i=FD_STDIN; i<=FD_STDERR; i++) {
       FileInfo[i].type  = ORG_TEXT;
-      FileInfo[i].dirty = FALSE;
+      FileInfo[i].dirty = false;
       FileInfo[i].mrs   = 0;
       FileInfo[i].buff  = (unsigned char *) NULL;
       
@@ -87,7 +92,7 @@ char *err;
    return OPEN_OK;
 }
 
-void DupStdStreams()
+void DupStdStreams(void)
 {
    int   i;
    
@@ -97,7 +102,7 @@ void DupStdStreams()
    
    for (i=FD_STDIN; i<=FD_STDERR; i++) {
       FileInfo[i].type  = ORG_TEXT;
-      FileInfo[i].dirty = FALSE;
+      FileInfo[i].dirty = false;
       FileInfo[i].mrs   = 0;
       FileInfo[i].buff  = (unsigned char *) NULL;
       
@@ -113,7 +118,7 @@ void DupStdStreams()
    dbgmsg("streams setup OK");
 }
 
-long FindFreeSlot()
+long FindFreeSlot(void)
 {
    register int i;
    
@@ -133,7 +138,7 @@ int org;
    if (slot != NO_SLOT) {
       FileInfo[slot].fd = fd;
       FileInfo[slot].org = org;
-      FileInfo[slot].dirty = FALSE;
+      FileInfo[slot].dirty = false;
       FileInfo[slot].mrs   = 0;
       FileInfo[slot].buff  = (unsigned char *) NULL;
    }
@@ -152,7 +157,7 @@ long fileid;
    info = &FileInfo[fileid];
    
    if (info->fd != NO_FILE) {
-      if (info->dirty == TRUE) {
+      if (info->dirty == true) {
 #ifdef VMS
          res = vmsput(info->rab, info->buff, (int)info->recordsize);
 #else

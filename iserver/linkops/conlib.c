@@ -36,6 +36,7 @@ static char *CMS_Id = "LINKOPS_H:CONLIB_C.AAAA-FILE;1(15-JAN-92)";
 
 #include <stdio.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 #ifdef SUNOS
 #include <strings.h>
@@ -50,6 +51,10 @@ static char *CMS_Id = "LINKOPS_H:CONLIB_C.AAAA-FILE;1(15-JAN-92)";
 #endif
 
 #ifdef SOLARIS
+#include <string.h>
+#endif
+
+#ifdef LINUX
 #include <string.h>
 #endif
 
@@ -99,7 +104,7 @@ static char state_description[129] = "description-init";
 static char field_name[65] = "fieldname-init!!";
 static char file_buffer[MAXLINE];
 static FILE *file_id;
-static BOOL show_errors = TRUE;
+static bool show_errors = true;
 
 static char search_hostname [65] = "thishostmachine";
 static char search_resourcename[65] = "dummyresource";
@@ -117,7 +122,7 @@ static unsigned char global_status;
 ***/
 
 
-static BOOL StringCaseCmp (s1, s2)
+static bool StringCaseCmp (s1, s2)
 char *s1, *s2;
 {
   int i = 0;
@@ -135,16 +140,16 @@ char *s1, *s2;
     }
     
     if (c1 != c2) {
-      return (FALSE);
+      return (false);
     } else {
       i++;
     }
   }
   
   if ((s1[i] == NUL) && (s2[i] == NUL)){
-    return (TRUE);            
+    return (true);            
   } else {
-    return (FALSE);
+    return (false);
   }
 }
 char ForceLower (x)
@@ -177,7 +182,7 @@ static void ReadPast ()
 {
 
   char x;
-  BOOL look = TRUE;
+  bool look = true;
 
   global_status = STATUS_NOERROR;
   (void)sprintf(conlib_errorstring, NULSTRING);
@@ -187,7 +192,7 @@ static void ReadPast ()
       case '*' : 
                  /* must find restarting continuation */
                  if (fgets (file_buffer, MAXLINE, file_id) == NULL) {
-                   if (show_errors == TRUE) {
+                   if (show_errors == true) {
                      (void) sprintf (conlib_errorstring, "connection database, file [%s], at line[%d]\n -> premature end of file\n", database_file, search_line);
                      global_status = STATUS_BAD_OPERATION;
                    } else {
@@ -232,13 +237,13 @@ static void ReadPast ()
 static void SkipToFieldSep ()
 {
   char x;
-  BOOL find_line;
+  bool find_line;
   
   global_status = STATUS_NOERROR;
   (void) sprintf(conlib_errorstring, NULSTRING);
   
-  find_line = TRUE;
-  while (find_line == TRUE) {
+  find_line = true;
+  while (find_line == true) {
     /* check field separator is ok */
     x = file_buffer[search_pos];
     switch (x) {
@@ -250,7 +255,7 @@ static void SkipToFieldSep ()
                   
       case '\n' :
         if (fgets (file_buffer, MAXLINE, file_id) == NULL) {
-          if (show_errors == TRUE) {
+          if (show_errors == true) {
             global_status = STATUS_BAD_TARGET_NAME;
           } else {
             global_status = STATUS_ENDOFFILE;
@@ -271,7 +276,7 @@ static void SkipToFieldSep ()
                   
       case '#' :
         if (fgets (file_buffer, MAXLINE, file_id) == NULL) {
-          if (show_errors == TRUE) {
+          if (show_errors == true) {
             global_status = STATUS_BAD_TARGET_NAME;
           } else {
             global_status = STATUS_ENDOFFILE;
@@ -291,7 +296,7 @@ static void SkipToFieldSep ()
       case '*' :
         /* read next line */
         if (fgets(file_buffer, MAXLINE, file_id) == NULL) {
-          if (show_errors == TRUE) {
+          if (show_errors == true) {
             (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> premature end of database file, looking for field {%s}\n", database_file, search_line, field_name);
             global_status = STATUS_BAD_OPERATION;
           } else {
@@ -301,7 +306,7 @@ static void SkipToFieldSep ()
         } else {
           search_pos = 0;
           search_line++;
-          find_line = FALSE;
+          find_line = false;
         }
         SkipWhiteSpace ();
         
@@ -314,7 +319,7 @@ static void SkipToFieldSep ()
         break;
                   
       case '|':
-        find_line = FALSE;
+        find_line = false;
         break;
                   
       default :
@@ -339,19 +344,19 @@ static void SkipToFieldSep ()
      modifies : search_pos, file_buffer, global_status
      effects  : skips past any white space then tries to
                 match 'compare_string' to the buffer.
-                returns TRUE if matches, FALSE otherwise.
+                returns true if matches, false otherwise.
                 if matches, the end field separator is
                 checked.
                 if successfull, global_status = STATUS_NOERROR,
                 else = STATUS_BAD_OPERATION
                 
 */
-static BOOL CompareBufferTo (compare_string, compare_len, new_string)
+static bool CompareBufferTo (compare_string, compare_len, new_string)
 char *compare_string;
 int compare_len;
 char *new_string;
 {
-  BOOL compare;
+  bool compare;
   char x;
   int i;
          
@@ -360,14 +365,14 @@ char *new_string;
   
   SkipToFieldSep();
   if (global_status != STATUS_NOERROR) {
-    return (FALSE);
+    return (false);
   }
   
   /* compare field, if matches will fall thru, if 
-     doesn't match will return FALSE             */
-  compare = TRUE;
+     doesn't match will return false             */
+  compare = true;
   i = 0;
-  while ((compare == TRUE) && (i <= compare_len)) {
+  while ((compare == true) && (i <= compare_len)) {
     x = file_buffer[search_pos];
     if (ForceLower(x) != ForceLower (compare_string[i]) ) {
       /* no match */
@@ -379,7 +384,7 @@ char *new_string;
         (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> field {%s} cannot be null\n", database_file, search_line, field_name);
         global_status = STATUS_BAD_OPERATION;
       }  
-      return (FALSE);
+      return (false);
     } else {
       new_string[i] = x;
       search_pos++;
@@ -391,7 +396,7 @@ char *new_string;
   if (i < 1) {
     (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> field {%s} cannot be null\n", database_file, search_line, field_name);
     global_status = STATUS_BAD_OPERATION;
-    return (FALSE);
+    return (false);
   }
   
   /* all of supplied string has matched, go to end of field
@@ -403,11 +408,11 @@ char *new_string;
   x = file_buffer[search_pos];
   switch (x) {
     case '|' :
-      return (TRUE);
+      return (true);
       break;
       
     case '*' : 
-      return (TRUE);
+      return (true);
       break;
       
     default  :
@@ -416,10 +421,10 @@ char *new_string;
         (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> premature end of database file, looking for field {%s}\n", database_file, search_line, field_name);
         global_status = STATUS_BAD_OPERATION;
       }
-      return (FALSE);
+      return (false);
       break;
   }
-  return (FALSE); /* this statement will never be executed - its just to keep lint happy */
+  return (false); /* this statement will never be executed - its just to keep lint happy */
     
 }
 
@@ -432,18 +437,18 @@ char *new_string;
                 if successfull, global_status = STATUS_NOERROR,
                 else = STATUS_BAD_OPERATION
 */
-static BOOL UnpackBoolFromBuffer()
+static bool UnpackBoolFromBuffer()
 {
 
   char x;
-  BOOL value;
+  bool value;
   
   global_status = STATUS_NOERROR;
   (void)sprintf(conlib_errorstring, NULSTRING);
   
   SkipToFieldSep();
   if (global_status != STATUS_NOERROR) {
-    return (FALSE);
+    return (false);
   }
   
   /* read boolean field */
@@ -451,12 +456,12 @@ static BOOL UnpackBoolFromBuffer()
   switch (x) {
     case 't' :
     case 'T' : search_pos++;
-               value = TRUE;
+               value = true;
                break;
                
     case 'f' : 
     case 'F' : search_pos++;
-               value = FALSE;
+               value = false;
                break;
                   
     default  :
@@ -466,7 +471,7 @@ static BOOL UnpackBoolFromBuffer()
                  (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> illegal boolean value, looking for field {%s}\n", database_file, search_line, field_name);
                }
                global_status = STATUS_BAD_OPERATION;
-               return (FALSE);
+               return (false);
                break;
   }
   SkipWhiteSpace ();
@@ -475,12 +480,12 @@ static BOOL UnpackBoolFromBuffer()
   x = file_buffer[search_pos];
   if ((x != '|') && (x != '*')) {
     if ((x == '\n') || (x == NUL)) {
-      (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> premature end of line, looking for field {%s}\n", database_file, search_line);
+      (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> premature end of line, looking for field {%s}\n", database_file, search_line, field_name);
     } else {
       (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> bad field separator, looking for field {%s}\n", database_file, search_line, field_name);
     }
     global_status = STATUS_BAD_OPERATION;
-    return (FALSE);
+    return (false);
   } else {
     return (value);
   }
@@ -494,7 +499,7 @@ static BOOL UnpackBoolFromBuffer()
                 tries to read a string field value which is
                 returned. the end of field separator is
                 checked.
-                if 'no_nulls' = TRUE, parsing a null string
+                if 'no_nulls' = true, parsing a null string
                 will result in failure.
                 if successfull, global_status = STATUS_NOERROR,
                 else = STATUS_BAD_OPERATION
@@ -502,12 +507,12 @@ static BOOL UnpackBoolFromBuffer()
 static void UnpackStringFromBuffer(string, string_len, no_nulls)
 char string[];
 int string_len;
-BOOL no_nulls;
+bool no_nulls;
 {
 
   int i, end_pos;
   char x;
-  BOOL go;
+  bool go;
   
   global_status = STATUS_NOERROR;
   (void)sprintf(conlib_errorstring, NULSTRING);
@@ -530,22 +535,22 @@ BOOL no_nulls;
   /* strip off any non-significant right spaces */
   i--;
   end_pos = i;
-  go = TRUE;
-  while (go == TRUE) {
+  go = true;
+  while (go == true) {
     if (i < 0) {
-      go = FALSE;
+      go = false;
       end_pos = (i + 1);
     } else {
       if ((string[i] != ' ') && (string[i] != '\t')) {
         end_pos = (i + 1);
-        go = FALSE;
+        go = false;
       }
     }
     i--;
   }
   string[end_pos] = NUL;                                   
   
-  if ((no_nulls == TRUE) && (end_pos < 1)) {
+  if ((no_nulls == true) && (end_pos < 1)) {
     (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> field {%s} cannot be null\n", database_file, search_line, field_name);
     global_status = STATUS_BAD_OPERATION;
     return;
@@ -571,10 +576,10 @@ char string[];
 int string_len;
 {
 
-  BOOL go;
+  bool go;
   int i, end_pos;
   char x;
-  BOOL grab;
+  bool grab;
   
   global_status = STATUS_NOERROR;
   (void)sprintf(conlib_errorstring, NULSTRING);
@@ -584,13 +589,13 @@ int string_len;
     return;
   }
   
-  grab = TRUE;
+  grab = true;
   i = 0;
   x = file_buffer[search_pos];
   while (grab) {
    if ((x == NUL) || (x == '|') || (x == '*') || (i > string_len)) {
      string[i] = NUL;
-     grab = FALSE;
+     grab = false;
    } else {
      string[i] = x;
      search_pos++;
@@ -600,7 +605,7 @@ int string_len;
   }
   if ((x != '*') && (x != '|')) {
     if (x == '\n') {
-      (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> premature end of line, looking for field {%s}\n", database_file, search_line);
+      (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> premature end of line, looking for field {%s}\n", database_file, search_line, field_name);
     } else {
       (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> bad field separator, looking for field {%s}\n", database_file, search_line, field_name);
     }
@@ -611,15 +616,15 @@ int string_len;
   /* strip off any non-significant right spaces */
   i--;
   end_pos = i;
-  go = TRUE;
-  while (go == TRUE) {
+  go = true;
+  while (go == true) {
     if (i < 0) {
-      go = FALSE;
+      go = false;
       end_pos = (i + 1);
     } else {
       if ((string[i] != ' ') && (string[i] != '\t')) {
         end_pos = (i + 1);
-        go = FALSE;
+        go = false;
       }
     }
     i--;
@@ -628,7 +633,7 @@ int string_len;
   return;
 }
 
-static BOOL StringsEqual (s1, s2)
+static bool StringsEqual (s1, s2)
 char *s1, *s2;
 {
   int i = 0;
@@ -646,7 +651,7 @@ char *s1, *s2;
     }
     
     if (c1 != c2) {
-      return (FALSE);
+      return (false);
     } else {
       i++;
     }
@@ -657,12 +662,12 @@ char *s1, *s2;
   }
   
   if (s1[i] != NUL) {
-    return (FALSE);
+    return (false);
   } else {
     if (i > 0) {
-      return (TRUE);
+      return (true);
     } else {
-      return (FALSE);
+      return (false);
     }
   }
 }
@@ -670,23 +675,23 @@ char *s1, *s2;
 static int ResolveLinkMethod (device_string)
 char *device_string;
 {
-  BOOL resolved = FALSE;
+  bool resolved = false;
   int i = 1;
   int method;
   
   global_status = STATUS_NOERROR;
   
-  while (resolved == FALSE) {
+  while (resolved == false) {
   
-    if (StringsEqual (device_string, LMethodNames[i]) == TRUE) {
+    if (StringsEqual (device_string, LMethodNames[i]) == true) {
       /* resolved ok */
-      resolved = TRUE;
+      resolved = true;
       method = i;
     } else {
       i++;
     }
     if (i == MAX_LMETHODS) {
-      resolved = TRUE;
+      resolved = true;
       global_status = STATUS_BAD_OPERATION;
       (void) sprintf (conlib_errorstring, "connection database, file[%s], at line[%d]\n -> illegal linkdev field - unknown method\n", database_file, search_line);
       method = 0;
@@ -703,14 +708,14 @@ static unsigned char GetOtherFields ()
   
   /* get other fields */
   (void) strcpy (field_name, "LinkName");
-  UnpackStringFromBuffer (state_linkname, 64, TRUE);
+  UnpackStringFromBuffer (state_linkname, 64, true);
   if (global_status != STATUS_NOERROR) {
     return (global_status);
   }
   
   /* read linkdev & resolve a numeric value */
   (void) strcpy (field_name, "LinkDev");
-  UnpackStringFromBuffer (tmp_linkdev, 64, TRUE);     
+  UnpackStringFromBuffer (tmp_linkdev, 64, true);     
   if (global_status != STATUS_NOERROR) {
     return (global_status);
   }
@@ -722,13 +727,13 @@ static unsigned char GetOtherFields ()
   }
   
   (void) strcpy (field_name, "MMSFile");
-  UnpackStringFromBuffer (state_mmsfile, 64, FALSE);
+  UnpackStringFromBuffer (state_mmsfile, 64, false);
   if (global_status != STATUS_NOERROR) {
     return (global_status);
   }
   
   (void) strcpy (field_name, "MMSLink");
-  UnpackStringFromBuffer (state_mmslink, 64, FALSE);     
+  UnpackStringFromBuffer (state_mmslink, 64, false);     
   if (global_status != STATUS_NOERROR) {
     return (global_status);
   }
@@ -742,16 +747,16 @@ static unsigned char GetOtherFields ()
 static unsigned char OnePassSearch (match_state)
 enum MatchStates match_state;
 {
-  BOOL found = FALSE;
-  BOOL match;
+  bool found = false;
+  bool match;
   unsigned char result;
   
-  while (found == FALSE) {
+  while (found == false) {
   
     /* READ DATABASE INTO BUFFER */
     if (fgets(file_buffer, MAXLINE, file_id) == NULL) {
       /* end of file - didnt find resource */
-      if (show_errors == TRUE) {
+      if (show_errors == true) {
         return (STATUS_BAD_TARGET_NAME);
       } else {
         return (STATUS_ENDOFFILE);
@@ -790,13 +795,13 @@ enum MatchStates match_state;
            * allow match against "localhost" if searching for local resources. (SIM 15/10/92)
            */
           (void) strcpy (field_name, "Machine");
-          UnpackStringFromBuffer(state_machinename, 64, TRUE);
+          UnpackStringFromBuffer(state_machinename, 64, true);
           if (global_status != STATUS_NOERROR) {
             return (global_status);
           }
-          match = ( StringCaseCmp (search_machinename, state_machinename) == TRUE) ||
-                  ((StringCaseCmp (state_machinename, "localhost") == TRUE) &&
-                   (StringCaseCmp (search_machinename, search_hostname) == TRUE));
+          match = ( StringCaseCmp (search_machinename, state_machinename) == true) ||
+                  ((StringCaseCmp (state_machinename, "localhost") == true) &&
+                   (StringCaseCmp (search_machinename, search_hostname) == true));
           
           if (match) {
             /* succesfully located */
@@ -805,13 +810,13 @@ enum MatchStates match_state;
               return (result);
             }
             
-            if ((StringCaseCmp (state_machinename, "localhost") == FALSE) && (StringCaseCmp (state_machinename, search_hostname) == FALSE )) {
+            if ((StringCaseCmp (state_machinename, "localhost") == false) && (StringCaseCmp (state_machinename, search_hostname) == false )) {
               /* Resource is remote */
               switch (match_state) {
                 case MATCHremoteonly:
                 case MATCHlocalorremote:
                   /* ok to match against this resource */
-                  found = TRUE;
+                  found = true;
                   break;
                   
                 case MATCHlocalonly:
@@ -837,7 +842,7 @@ enum MatchStates match_state;
                   break;
                 default:
                   /* ok to match against this resource */
-                  found = TRUE;
+                  found = true;
                   break;
               }
             } 
@@ -875,7 +880,7 @@ enum MatchStates match_state;
           
           /* get machine name */
           (void) strcpy (field_name, "Machine");
-          UnpackStringFromBuffer(state_machinename, 64, TRUE);
+          UnpackStringFromBuffer(state_machinename, 64, true);
           if (global_status != STATUS_NOERROR) {
             return (global_status);
           }
@@ -885,12 +890,12 @@ enum MatchStates match_state;
             return (result);
           }
           
-          if ((StringCaseCmp (state_machinename, "localhost") == FALSE) && (StringCaseCmp (state_machinename, search_hostname) == FALSE )) {
+          if ((StringCaseCmp (state_machinename, "localhost") == false) && (StringCaseCmp (state_machinename, search_hostname) == false )) {
             switch (match_state) {
               case MATCHremoteonly:
               case MATCHlocalorremote:
                 /* ok to match against this resource */
-                found = TRUE;
+                found = true;
                 break;
                 
               case MATCHlocalonly:
@@ -914,7 +919,7 @@ enum MatchStates match_state;
                 break;
               default:
                 /* ok to match against this resource */
-                found = TRUE;
+                found = true;
             }
           }
           
@@ -929,7 +934,7 @@ enum MatchStates match_state;
         
       case SEARCHjustmachine:
         /* read resource value */
-        UnpackStringFromBuffer (state_resourcename, 64, TRUE);
+        UnpackStringFromBuffer (state_resourcename, 64, true);
         if (global_status != STATUS_NOERROR) {
           return (global_status);
         }
@@ -949,7 +954,7 @@ enum MatchStates match_state;
         }
         if (match) {
           /* succesfully located */
-          found = TRUE;
+          found = true;
           result = GetOtherFields ();
           if (result != STATUS_NOERROR) {
             return (result);
@@ -988,7 +993,7 @@ char *machine;
 char *hostname;
 {
 
-  BOOL resource_isnull, machine_isnull, hostname_isnull;
+  bool resource_isnull, machine_isnull, hostname_isnull;
   char *database_ptr;
   
   search_line = 0;
@@ -1011,24 +1016,24 @@ char *hostname;
   }
   
   if ((resource == NULL) || (*resource == NUL)) {
-    resource_isnull = TRUE;
+    resource_isnull = true;
   } else {
-    resource_isnull = FALSE;
+    resource_isnull = false;
   }
   
   if ((machine == NULL) || (*machine == NUL)) {
-    machine_isnull = TRUE;
+    machine_isnull = true;
   } else {
-    machine_isnull = FALSE;
+    machine_isnull = false;
   }
   
   if ((hostname == NULL) || (*hostname == NUL)) {
-    hostname_isnull = TRUE;
+    hostname_isnull = true;
   } else {
-    hostname_isnull = FALSE;
+    hostname_isnull = false;
   }
     
-  if ((resource_isnull == FALSE) && (machine_isnull == FALSE)) {                                  
+  if ((resource_isnull == false) && (machine_isnull == false)) {                                  
     DebugMessage ( fprintf (stderr, "Debug       : search_type = SEARCHnamedmachine\n") );
     search_type = SEARCHnamedmachine;
     (void) strcpy (search_resourcename, resource);
@@ -1037,14 +1042,14 @@ char *hostname;
     search_machinelen = strlen(machine) - 1;     
   } else {
     
-    if ((resource_isnull == FALSE) && (machine_isnull == TRUE)) {
+    if ((resource_isnull == false) && (machine_isnull == true)) {
       DebugMessage ( fprintf (stderr, "Debug       : search_type = SEARCHanymachine\n") );
       search_type = SEARCHanymachine;
       (void) strcpy (search_resourcename, resource);
       search_resourcelen = strlen(resource) - 1;
     } else {
   
-      if ((resource_isnull == TRUE) && (machine_isnull == FALSE)) {
+      if ((resource_isnull == true) && (machine_isnull == false)) {
         DebugMessage ( fprintf (stderr, "Debug       : search_type = SEARCHjustmachine\n") );
         search_type = SEARCHjustmachine;
         (void) strcpy (search_machinename, machine);
@@ -1056,7 +1061,7 @@ char *hostname;
     }
   }
   
-  if ((search_type != SEARCHjustmachine) && (hostname_isnull == TRUE)) {
+  if ((search_type != SEARCHjustmachine) && (hostname_isnull == true)) {
     (void) sprintf (conlib_errorstring, " : module [conlib.c], function [CM_InitSearch]\n -> hostname is blank\n");
     return (STATUS_BAD_OPERATION);
   } else {
@@ -1085,7 +1090,7 @@ char *hostname;
   } else {
     search_pos = 0;
     search_pass = 1;
-    show_errors = TRUE;
+    show_errors = true;
   }
   return (STATUS_NOERROR);
 }
@@ -1133,12 +1138,12 @@ unsigned char CM_DoSearch ()
       switch (search_pass) {
         case 1:
           /* do 1st pass, looking at local resources only */
-          show_errors = FALSE;
+          show_errors = false;
           DebugMessage ( fprintf (stderr, "Debug       : searching for local resources only\n") );
           result = OnePassSearch (MATCHlocalonly);
           if (result == STATUS_ENDOFFILE) {
             /* do 2nd pass, looking at remote resources only */
-            show_errors = TRUE;
+            show_errors = true;
             search_pass = 2;
             /* move back to start of file */
             rewind(file_id);
@@ -1158,7 +1163,7 @@ unsigned char CM_DoSearch ()
           
         case 2:
           /* do 2nd pass, looking at remote resources only */
-          show_errors = TRUE;
+          show_errors = true;
           DebugMessage ( fprintf (stderr, "Debug       : searching for remote resources only\n") );
           result = OnePassSearch (MATCHremoteonly);
           if (result == STATUS_ENDOFFILE) {
@@ -1178,7 +1183,7 @@ unsigned char CM_DoSearch ()
     case SEARCHjustmachine:
       switch (search_pass) {
         case 1:
-          show_errors = TRUE;
+          show_errors = true;
           DebugMessage ( fprintf (stderr, "Debug       : searching for local or remote resources\n") ); 
           result = OnePassSearch (MATCHlocalorremote);
           if (result == STATUS_ENDOFFILE) {
@@ -1217,7 +1222,7 @@ char *resource_name;
   (void) strcpy (resource_name, state_resourcename);
 }
 
-BOOL CM_GetIsWorking ()
+bool CM_GetIsWorking ()
 {
   return state_isworking;
 }

@@ -16,10 +16,10 @@
 --
 ------------------------------------------------------------------------------*/
 
-/* needs types.h definition of BOOL */
+#include <stdbool.h>
 
-extern BOOL debug_davee_lux;
-extern BOOL info_davee_lux;
+extern bool debug_davee_lux;
+extern bool info_davee_lux;
 
 #define InternalDebugMessage(x) if (debug_davee_lux) { x; }
 #define InternalInfoMessage(x) if (info_davee_lux) { x; }
@@ -43,7 +43,7 @@ extern BOOL info_davee_lux;
 #endif
 
 extern void SetDebugMode ();
-extern BOOL GetDebugMode ();
+extern bool GetDebugMode ();
 extern void SetInfoMode ();
-extern BOOL GetInfoMode (); 
+extern bool GetInfoMode (); 
 

@@ -61,6 +61,11 @@ static char *CMS_Id = "LINKOPS_H:LINKOPS_C.AAAA-FILE;1(15-JAN-92)";
 #endif
 #endif
 
+#ifdef LINUX
+#include <string.h>
+#include <stdlib.h>
+#endif
+
 /* prototypes for imported library bits*/
 #include "types.h"
 #include "linkops.h"
@@ -270,7 +275,7 @@ static struct VECTOR restart_vector [] = {
 #endif
 };
 
-static BOOL StringCaseCmp (s1, s2)
+static bool StringCaseCmp (s1, s2)
 char *s1, *s2;
 {
   int i = 0;
@@ -288,16 +293,16 @@ char *s1, *s2;
     }
     
     if (c1 != c2) {
-      return (FALSE);
+      return (false);
     } else {
       i++;
     }
   }
   
   if ((s1[i] == NUL) && (s2[i] == NUL)){
-    return (TRUE);            
+    return (true);            
   } else {
-    return (FALSE);
+    return (false);
   }
 }
 
@@ -318,8 +323,8 @@ int *localmethod;
 char *server_name;
 char *link_name;
 {
-  BOOL contains_at, inuse = FALSE;
-  BOOL found = FALSE, located = FALSE, local_resource;
+  bool contains_at, inuse = false;
+  bool found = false, located = false, local_resource;
   char internal_resourcename[65], internal_machinename[129];
   int iomethod;
   unsigned char result;
@@ -358,17 +363,17 @@ char *link_name;
    ** and internal_machine parts
   **/
   {
-    BOOL strip_resource, strip_machine;
+    bool strip_resource, strip_machine;
     int i,j;
     
     internal_resourcename[0] = NUL;
     internal_machinename[0] = NUL;
     
-    strip_resource = TRUE;
-    strip_machine = FALSE;
-    contains_at = FALSE;
+    strip_resource = true;
+    strip_machine = false;
+    contains_at = false;
     i = 0;
-    while (strip_resource == TRUE) {
+    while (strip_resource == true) {
       if (i > 64) {                                 
         DebugMessage ( fprintf (stderr, "Debug       : resource name too long\n") );
         (void) sprintf (lnkops_errorstring, " : invalid resource name\n");
@@ -383,7 +388,7 @@ char *link_name;
           OPSerrorstatus = STATUS_BAD_OPERATION;
           return (OPSerrorstatus);
         } else {
-          strip_resource = FALSE; 
+          strip_resource = false; 
         }
         
       } else {
@@ -395,9 +400,9 @@ char *link_name;
             return (OPSerrorstatus);
           } else {
             internal_resourcename[i] = NUL;
-            strip_resource = FALSE;
-            strip_machine = TRUE;
-            contains_at = TRUE;
+            strip_resource = false;
+            strip_machine = true;
+            contains_at = true;
             i++;
           }
         
@@ -408,10 +413,10 @@ char *link_name;
       }
     }
    
-    if (strip_machine == FALSE) {
+    if (strip_machine == false) {
     } else {
       j = 0;
-      while (strip_machine == TRUE) {
+      while (strip_machine == true) {
         if (j > 64) {
           DebugMessage ( fprintf (stderr, "Debug       : machine name too long\n") );
           (void) sprintf (lnkops_errorstring, " : invalid resource name\n");
@@ -427,7 +432,7 @@ char *link_name;
             return (OPSerrorstatus);
           } else {
             internal_machinename[j] = NUL;
-            strip_machine = FALSE;
+            strip_machine = false;
           }
           
         } else {
@@ -459,7 +464,7 @@ char *link_name;
 #if defined(PCNFS) || defined(PCTCP)
   }
   else {
-    if ((contains_at == TRUE) && (StringCaseCmp (internal_machinename, "localhost") == FALSE)) {
+    if ((contains_at == true) && (StringCaseCmp (internal_machinename, "localhost") == false)) {
       InfoMessage ( fprintf (stderr, "Info        : can't access remote resource [%s], TCP not installed\n", resource) );
       (void) sprintf (lnkops_errorstring, " : can't access resource [%s]\n", resource);
       OPSerrorstatus = STATUS_BAD_OPERATION;
@@ -468,16 +473,16 @@ char *link_name;
     /* No TCP, equivalent to specifying "localhost" on the command line */
     (void) strcpy (hostname, "localhost");
     (void) strcpy (internal_machinename, "localhost");
-    contains_at = TRUE;
+    contains_at = true;
   }
 #endif
   
   /**
    ** Catagorize the type of match we want.
    **/
-  if (contains_at == TRUE) {
-    if ((StringCaseCmp (internal_machinename, "localhost") == TRUE) ||
-        (StringCaseCmp (internal_machinename, hostname   ) == TRUE)) {
+  if (contains_at == true) {
+    if ((StringCaseCmp (internal_machinename, "localhost") == true) ||
+        (StringCaseCmp (internal_machinename, hostname   ) == true)) {
       /**
        ** Specified this hosts name.
        **/
@@ -530,7 +535,7 @@ char *link_name;
   }
 #else
   /* setup name of this machine */
-  if ((contains_at == TRUE) && (StringCaseCmp (internal_machinename, "localhost") == FALSE)) {
+  if ((contains_at == true) && (StringCaseCmp (internal_machinename, "localhost") == false)) {
     InfoMessage ( fprintf (stderr, "Info        : can't access [%s] not compiled to use TCP\n", resource) );
     (void) sprintf (lnkops_errorstring, " : can't access resource [%s]\n", resource);
     OPSerrorstatus = STATUS_BAD_OPERATION;
@@ -551,10 +556,10 @@ char *link_name;
       break;
   }
   
-  found = FALSE;
-  located = FALSE;
+  found = false;
+  located = false;
   
-  while (found == FALSE) {
+  while (found == false) {
     /**
      ** search for a matching entry 
     **/
@@ -565,8 +570,8 @@ char *link_name;
         switch (OPSerrorstatus) {
           case STATUS_BAD_TARGET_NAME:
             (void) CM_EndSearch ();
-            if (located == TRUE) {
-              if (inuse == TRUE) {
+            if (located == true) {
+              if (inuse == true) {
                 (void) sprintf (&lnkops_errorstring[strlen(conlib_errorstring)], " : resource [%s] in use\n", (char *) resource);
               } else {
                 (void) sprintf(&lnkops_errorstring[strlen(conlib_errorstring)], " : can't access resource [%s]\n", resource);
@@ -596,8 +601,8 @@ char *link_name;
     /**
      ** a match has been made, gets fields & if seems ok,
     **/
-    if (CM_GetIsWorking () == TRUE) {
-      located = TRUE;
+    if (CM_GetIsWorking () == true) {
+      located = true;
       
       (void) CM_GetMachine (server_name);
       iomethod = CM_GetLinkMethod ();
@@ -605,21 +610,21 @@ char *link_name;
       /**
        ** deduce whether to access by TCP or by local driver
       **/
-      if ((StringCaseCmp (server_name, "localhost") == TRUE) ||
-          (StringCaseCmp (server_name, hostname   ) == TRUE)) {
-        local_resource = TRUE;
+      if ((StringCaseCmp (server_name, "localhost") == true) ||
+          (StringCaseCmp (server_name, hostname   ) == true)) {
+        local_resource = true;
       } else {
-          local_resource = FALSE;
+          local_resource = false;
       }
       
-      if ((local_resource == TRUE) && (iomethod == TCP_LINKOPS)) {
+      if ((local_resource == true) && (iomethod == TCP_LINKOPS)) {
         InfoMessage ( fprintf (stderr, "Warning     : connection database weirdness, at line [%d]\n -> can't access local resource via TCP\n", CM_GetLineNumber ()) );
         
       } else {
         /**
          ** record is valid so attempt to open a connection to it
         **/
-        if (local_resource == TRUE) {
+        if (local_resource == true) {
           /**
            ** resource is local, so try to access it as such
            **/
@@ -642,12 +647,12 @@ char *link_name;
         **/
         switch (OPSerrorstatus) {
           case STATUS_NOERROR:
-            found = TRUE;
+            found = true;
             break;
           
           case STATUS_TARGET_UNAVAILABLE:
             OPSmethod = OPSMETHODundefined;
-            inuse = TRUE;
+            inuse = true;
             break;
           
           /* non-fatal error */

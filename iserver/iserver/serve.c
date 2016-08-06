@@ -12,6 +12,12 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include "linkops.h"
 #include "opserror.h"
 #include "hbeat.h"
+#include "record.h"
+#include "parsecl.h"
+#include "serverc.h"
+#include "filec.h"
+#include "hostc.h"
+#include "info.h"
 
 int (*HeartBeat)();
 
@@ -20,9 +26,9 @@ int (*HeartBeat)();
  * buffer to link)
  */
 
-int      Serve()
+int      Serve(void)
 {
-   bool            terminate_flag = FALSE;
+   bool            terminate_flag = false;
    int             result;
    unsigned char   ops_res;
 
@@ -34,7 +40,7 @@ int      Serve()
       close_server(MISC_EXIT, ErrMsg);
    }
    
-   while (TRUE) {
+   while (true) {
       dbgmsg("-=-");
       ops_res = OPS_GetRequest(ConnId, Tbuf, ONESECOND/6, HeartBeat);
       
@@ -107,9 +113,9 @@ int      Serve()
          SpSystem();
          break;
       case SP_EXIT:
-         terminate_flag = TRUE;
+         terminate_flag = true;
          result = SpExit();
-         TestErrorSwitch = FALSE;
+         TestErrorSwitch = false;
          break;
       case SP_COMMAND:
          SpCommand();
@@ -147,7 +153,7 @@ int      Serve()
       case SP_PUTREC:
          SpPutRec();
          break;
-#ifndef MSDOS
+#if !defined (MSDOS) && !defined (LINUX)
       case SP_PARMACS  : SpParmacs();  break; /* RCW parmacs addition */
 #endif
       case SP_PUTEOF:
@@ -173,7 +179,7 @@ int      Serve()
          close_server(MISC_EXIT, ErrMsg);
       }
 
-      if (terminate_flag == TRUE)
+      if (terminate_flag == true)
          return (result);
    }
 }

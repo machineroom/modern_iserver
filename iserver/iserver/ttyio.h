@@ -10,10 +10,9 @@
 
 /* Functions */
 
-#ifdef PROTOTYPES
-#else
-extern void HostEnd();
-extern void HostBegin();
-extern char GetAKey();
-extern int PollKey();
-#endif /* PROTOTYPES */
+extern void ResetTerminal(void);
+extern void HostEnd(void);
+extern void HostBegin(void);
+extern char GetAKey(void);
+extern int PollKey(void);
+

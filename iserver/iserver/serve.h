@@ -10,8 +10,5 @@
 extern int (*HeartBeat)();
 
 /* Functions */
+extern int Serve(void);
 
-#ifdef PROTOTYPES
-#else
-extern int Serve();
-#endif /* PROTOTYPES */
