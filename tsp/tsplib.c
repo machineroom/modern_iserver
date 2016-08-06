@@ -187,15 +187,35 @@ int check_error(int syscall_rc, char *scsi_op, sg_io_hdr_t *io_hdr) {
     }
 }
 
+//TODO assuming only single use!
+//need to maintain mapping table and dish out our own virtul fd's
+static int wfd=-1;
+static int rfd=-1;
+
 /* Library function prototypes */
 int tsp_open( char *device ) {
-    int sg_fd;
-    sg_fd = open(device, O_RDWR);
-    return sg_fd;
+    //device will be of form "sg2"
+    if (wfd == -1 && rfd == -1) {
+        int devnum;
+        sscanf (device, "sg%i", &devnum);
+        char dev[20];
+        snprintf (dev, sizeof(dev), "/dev/sg%d", devnum);
+        wfd = open(dev, O_RDWR);
+        snprintf (dev, sizeof(dev), "/dev/sg%d", devnum+4);
+        rfd = open(dev, O_RDWR);
+        return 1;
+    } else {
+        printf ("URK don't know how ot cope with >1 open!\n");
+        assert(false);
+        return -1;
+    }
 }
 
 int tsp_close( int fd ) {
-    return close(fd);
+    close(wfd) && close(rfd);
+    wfd = -1;
+    rfd = -1;
+    return 0;
 }
 
 static int do_command(int fd, 
@@ -232,7 +252,11 @@ static int do_command(int fd,
     io_hdr.dxfer_len = *buffer_size;
     io_hdr.dxferp = buffer;
     io_hdr.timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
-    rc = ioctl(fd, SG_IO, &io_hdr);
+    if (dir == SG_DXFER_FROM_DEV) {
+        rc = ioctl(rfd, SG_IO, &io_hdr);
+    } else {
+        rc = ioctl(wfd, SG_IO, &io_hdr);
+    }
     ret = check_error (rc, command_name, &io_hdr);
     /* for verification only*/
 #ifdef DEBUG

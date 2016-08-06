@@ -4,25 +4,18 @@
 #include <string.h>
 
 int main (int argc, char **argv) {
-    int wfd;
-    int rfd;
+    int fd;
     int rc;
-    wfd = tsp_open(argv[1]);
-    printf ("tsp_open (%s) = %d\n", argv[1], wfd);
-    rfd = tsp_open(argv[2]);
-    printf ("tsp_open (%s) = %d\n", argv[2], rfd);
-    rc = tsp_reset(wfd);
-    printf ("tsp_reset (write) = %d\n", rc);
-    rc = tsp_reset(rfd);
-    printf ("tsp_reset (read)  = %d\n", rc);
+    fd = tsp_open(argv[1]);
+    printf ("tsp_open (%s) = %d\n", argv[1], fd);
+    rc = tsp_reset(fd);
+    printf ("tsp_reset = %d\n", rc);
 /*    rc = tsp_analyse(wfd);
     printf ("tsp_analyse = %d\n", rc);
     rc = tsp_error(wfd);
     printf ("tsp_error = %d\n", rc);*/
-    rc = tsp_protocol(wfd, TSP_RAW_PROTOCOL, 4096);
-    printf ("tsp_protocol (write) = %d\n", rc);
-    rc = tsp_protocol(rfd, TSP_RAW_PROTOCOL, 4096);
-    printf ("tsp_protocol (read)  = %d\n", rc);
+    rc = tsp_protocol(fd, TSP_RAW_PROTOCOL, 4096);
+    printf ("tsp_protocol = %d\n", rc);
     //blatant copy from https://github.com/hessch/rpilink/blob/master/utils/tdetect.py
     // & http://www.geekdot.com/category/software/transputer-software/ (iTest)
     uint8_t boot[] = 
@@ -44,13 +37,12 @@ int main (int argc, char **argv) {
                                    will be input from the link and placed in memory starting at MEMSTART.
                                    This code will then be executed."
                                    http://www.wizzy.com/wizzy/transputer_faq.txt*/
-    rc = tsp_write(wfd, boot, sizeof(boot), 2 );
+    rc = tsp_write(fd, boot, sizeof(boot), 2 );
     printf ("tsp_write = %d\n", rc);
     uint8_t rx[256];
-    rc = tsp_read(rfd, rx, 4, 0 );
+    rc = tsp_read(fd, rx, 4, 0 );
     printf ("tsp_read = %d [%02X %02X %02X %02X]\n", rc, rx[0], rx[1], rx[2], rx[3]);
-    tsp_close(wfd);
-    tsp_close(rfd);
+    tsp_close(fd);
 }
 
 

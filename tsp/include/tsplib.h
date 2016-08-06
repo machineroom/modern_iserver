@@ -46,6 +46,10 @@ DESCRIPTION
      (or bus) used, n is the target SCSI id, and o  is  the  link
      number (0 - 3).  For example, c0t5l0 specifies link 0 on the
      target with id 5 on SCSI bus 0.
+
+     For Linux port device is now sgX where X is the host output link.
+     The host input link is assumed ot be X+4     
+     
 RETURN VALUES
      Returns a non-negative descriptor on success or -1 on error.
 */
