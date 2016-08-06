@@ -18,6 +18,7 @@
 #include <scsi/sg.h>
 
 #define DEFAULT_TIMEOUT (5)
+//#define DEBUG
 
 static void dump_error (sg_io_hdr_t *io_hdr) {
     bool status_ok = true;
@@ -203,7 +204,8 @@ static int do_command(int fd,
                       int dir, 
                       uint8_t *buffer, 
                       unsigned int *buffer_size, 
-                      unsigned int timeout) {
+                      unsigned int timeout,
+                      unsigned int *status) {
     unsigned char cmdBlk[6];
     unsigned char sense_buffer[32];
     sg_io_hdr_t io_hdr;
@@ -216,7 +218,7 @@ static int do_command(int fd,
     cmdBlk[4] = (*buffer_size >> 0)  & 0xFF;
     cmdBlk[5] = 0;  //unused
     /* for verification only*/
-#if 1
+#ifdef DEBUG
     printf ("%s cmd blk = %02X %02X %02X %02X %02X %02X\n", 
              command_name, cmdBlk[0], cmdBlk[1], cmdBlk[2], cmdBlk[3], cmdBlk[4], cmdBlk[5]);
 #endif
@@ -233,10 +235,13 @@ static int do_command(int fd,
     rc = ioctl(fd, SG_IO, &io_hdr);
     ret = check_error (rc, command_name, &io_hdr);
     /* for verification only*/
-#if 1
+#ifdef DEBUG
     printf ("%s dxfer_len = %u, resid = %u\n", command_name, io_hdr.dxfer_len, io_hdr.resid);
 #endif
     *buffer_size = io_hdr.dxfer_len - io_hdr.resid;
+    if (status != NULL) {
+        *status = io_hdr.status;
+    }
     return ret;
 }
 
@@ -246,7 +251,7 @@ int tsp_reset( int fd ) {
     unsigned int size;
     //read FLAGS
     size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT);
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     if (ret == 0) {
         //write FLAGS
         buff[0] = LFLAG_RESET_LINK;
@@ -258,7 +263,7 @@ int tsp_reset( int fd ) {
         */
         buff[1] = TSP_RAW_PROTOCOL;
         size = sizeof(buff);
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT);
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     }
     return ret;
 }
@@ -269,7 +274,7 @@ int tsp_analyse( int fd ) {
     unsigned int size;
     //read FLAGS
     size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT);
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     if (ret == 0) {
         //write FLAGS
         buff[0] = LFLAG_SUBSYSTEM_ANALYSE;
@@ -281,7 +286,7 @@ int tsp_analyse( int fd ) {
         */
         buff[1] = TSP_RAW_PROTOCOL;
         size = sizeof(buff);
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT);
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     }
     return ret;
 }
@@ -292,7 +297,7 @@ int tsp_error( int fd ) {
     unsigned int size;
     //read FLAGS
     size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT);
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     if (ret == 0) {
         if ((buff[0] & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
             return 1;
@@ -301,10 +306,19 @@ int tsp_error( int fd ) {
     return ret;
 }
 
+static bool is_idle (int fd) {
+    unsigned int size = 0;
+    unsigned int status = 0;
+    int ret;
+    ret = do_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, NULL, &size, DEFAULT_TIMEOUT, &status);
+    printf ("is_idle : status = %02X\n", status);
+    return false;
+}
+
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
-    ret = do_command (fd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout);
+    ret = do_command (fd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout, NULL);
     if (ret == 0) {
         //return bytes read
         ret = size;
@@ -315,7 +329,7 @@ int tsp_read( int fd, void *data, size_t length, int timeout ) {
 int tsp_write( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
-    ret = do_command (fd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &size, timeout);
+    ret = do_command (fd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &size, timeout, NULL);
     if (ret == 0) {
         //return bytes written
         ret = size;
@@ -328,7 +342,7 @@ int tsp_protocol( int fd, int protocol, int block_size ) {
     int ret;
     //read FLAGS
     unsigned int size = sizeof(buff);
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT);
+    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     if (ret == 0) {
         //write protocol & block size
         buff[1] = protocol;
@@ -336,7 +350,7 @@ int tsp_protocol( int fd, int protocol, int block_size ) {
         buff[3] = (block_size >> 8)  & 0xFF;
         buff[4] = (block_size >> 0)  & 0xFF;
         size = sizeof(buff);
-        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT);
+        ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, NULL);
     }
     return ret;
 }

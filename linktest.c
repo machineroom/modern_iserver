@@ -24,14 +24,32 @@ int main (int argc, char **argv) {
     rc = tsp_protocol(rfd, TSP_RAW_PROTOCOL, 4096);
     printf ("tsp_protocol (read)  = %d\n", rc);
     //blatant copy from https://github.com/hessch/rpilink/blob/master/utils/tdetect.py
-    uint8_t data[] = {0xb1,0xd1,0x24,0xf2,0x21,0xfc,0x24,
-                      0xf2,0x21,0xf8,0xf0,0x60,0x5c,0x2a,
-                      0x2a,0x2a,0x4a,0xff,0x21,0x2f,0xff,
-                      0x02,0x00};
-    rc = tsp_write(wfd, data, sizeof(data), 2 );
+    // & http://www.geekdot.com/category/software/transputer-software/ (iTest)
+    uint8_t boot[] = 
+            {
+             0,                             /* size of bootstrap */
+             0xB1,                          /* AJW 1, allow for Iptr store    */
+             0xD1,                          /* STL 1                          */
+             0x24, 0xF2,                    /* MINT                           */
+             0x21, 0xFC,                    /* STHF                           */
+             0x24, 0xF2,                    /* MINT                           */
+             0x21, 0xF8,                    /* STLF                           */
+             0xF0,                          /* REV                            */
+             0x60, 0x5C,                    /* LDNLP -4                       */
+             0x2A, 0x2A, 0x2A, 0x4A,        /* LDC #AAAA                      */
+             0xFF,                          /* OUTWORD                        */
+             0x21, 0x2F, 0xFF              /* START                          */
+             };  
+    boot[0] = sizeof (boot)-1;  /*"If the first byte received is 2 or greater then that many bytes of code 
+                                   will be input from the link and placed in memory starting at MEMSTART.
+                                   This code will then be executed."*/
+    rc = tsp_write(wfd, boot, sizeof(boot), 2 );
     printf ("tsp_write = %d\n", rc);
     uint8_t rx[256];
-    memset (rx, 0xFF, sizeof(rx));
-    rc = tsp_read(rfd, rx, 4/*sizeof(rx)*/, 2 );
+    rc = tsp_read(rfd, rx, 4, 0 );
     printf ("tsp_read = %d [%02X %02X %02X %02X]\n", rc, rx[0], rx[1], rx[2], rx[3]);
+    tsp_close(wfd);
+    tsp_close(rfd);
 }
+
+
