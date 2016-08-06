@@ -345,13 +345,11 @@ int tsp_reset( int fd ) {
     ret = get_transtech_bits (rfd, &flags, &protocol, &block_size);
     flags = LFLAG_RESET_LINK;
     protocol = TSP_RAW_PROTOCOL;
-    block_size = 4096;
     ret = set_transtech_bits (rfd, flags, protocol, block_size);
     if (ret == 0) {
         ret = get_transtech_bits (wfd, &flags, &protocol, &block_size);
         flags = LFLAG_RESET_LINK;
         protocol = TSP_RAW_PROTOCOL;
-        block_size = 4096;
         ret = set_transtech_bits (wfd, flags, protocol, block_size);
     }
     return ret;
@@ -362,7 +360,6 @@ int tsp_analyse( int fd ) {
     unsigned char flags;
     unsigned char protocol;
     int block_size;
-    flags = LFLAG_SUBSYSTEM_ANALYSE;
     /*
      The link protocol is set to raw byte mode when the host link
      is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
