@@ -178,7 +178,9 @@ static void dump_error (sg_io_hdr_t *io_hdr) {
 //take syscall (ioctl) sttaus and SG header
 //TSP lib expects calls to return 0 or -1
 int check_error(int syscall_rc, char *scsi_op, sg_io_hdr_t *io_hdr) {
-    if (syscall_rc == 0 && io_hdr->status == 0) {
+    if (syscall_rc == 0 && 
+        io_hdr->status == 0 && 
+        io_hdr->host_status == 0) {
         return 0;
     } else {
         printf ("*E*E*E*E*E*E*E*E*E*E*E*E\n");
@@ -253,6 +255,18 @@ static int transtech_command(int fd,
     io_hdr->dxferp = buffer;
     io_hdr->timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
     rc = ioctl(fd, SG_IO, io_hdr);
+#ifdef DEBUG
+    printf ("SG iohdr debug :\n");
+    printf ("\tstatus = 0x%02X\n", io_hdr->status);
+    printf ("\tmasked_status = 0x%02X\n", io_hdr->masked_status);
+    printf ("\tmsg_status = 0x%02X\n", io_hdr->msg_status);
+    printf ("\tsb_len_wr = %d\n", io_hdr->sb_len_wr);
+    printf ("\thost_status = 0x%04X\n", io_hdr->host_status);
+    printf ("\tdriver_status = 0x%04X\n", io_hdr->driver_status);
+    printf ("\tresid = %d\n", io_hdr->resid);
+    printf ("\tduration = %d\n", io_hdr->duration);
+    printf ("\tinfo = 0x%04X\n", io_hdr->info);
+#endif
     *buffer_size = io_hdr->dxfer_len - io_hdr->resid;
     return rc;
 }
@@ -343,7 +357,7 @@ int tsp_reset( int fd ) {
      protocol persists until the link is reset.
     */
     ret = get_transtech_bits (rfd, &flags, &protocol, &block_size);
-    flags = LFLAG_RESET_LINK;
+    flags = LFLAG_RESET_LINK | LFLAG_SUBSYSTEM_RESET;
     protocol = TSP_RAW_PROTOCOL;
     ret = set_transtech_bits (rfd, flags, protocol, block_size);
     if (ret == 0) {
