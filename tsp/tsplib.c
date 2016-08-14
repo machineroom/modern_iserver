@@ -27,148 +27,148 @@ static void dump_error (sg_io_hdr_t *io_hdr) {
     bool host_ok = false;
     bool driver_ok = false;
     if (io_hdr->status != 0) {
-        printf ("status = %02X : ", io_hdr->status);
+        fprintf (stderr,"status = %02X : ", io_hdr->status);
         switch (io_hdr->status) {
-            case 0x02: printf ("check condition\n"); break;
-            default: printf ("*unknown*\n"); break;
+            case 0x02: fprintf (stderr,"check condition\n"); break;
+            default: fprintf (stderr,"*unknown*\n"); break;
         }
         status_ok = false;
     }
     if (status_ok) {
         if (io_hdr->info & 0x01) {
-            printf ("info = SG_INFO_CHECK\n");
+            fprintf (stderr,"info = SG_INFO_CHECK\n");
             info_ok = false;
         }
         if (!info_ok) {
             switch (io_hdr->host_status) {
                 case 0x0:
                     host_ok = true;
-                    printf ("host status = OK\n");
+                    fprintf (stderr,"host status = OK\n");
                     break;
                 case 0x1:
-                    printf ("host status = SG_ERR_DID_NO_CONNECT\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_NO_CONNECT\n");
                     break;
                 case 0x2:
-                    printf ("host status = SG_ERR_DID_BUS_BUSY\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_BUS_BUSY\n");
                     break;
                 case 0x3:
-                    printf ("host status = SG_ERR_DID_TIME_OUT\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_TIME_OUT\n");
                     break;
                 case 0x4:
-                    printf ("host status = SG_ERR_DID_BAD_TARGET\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_BAD_TARGET\n");
                     break;
                 case 0x5:
-                    printf ("host status = SG_ERR_DID_ABORT\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_ABORT\n");
                     break;
                 case 0x6:
-                    printf ("host status = SG_ERR_DID_PARITY\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_PARITY\n");
                     break;
                 case 0x7:
-                    printf ("host status = SG_ERR_DID_ERROR\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_ERROR\n");
                     break;
                 case 0x8:
-                    printf ("host status = SG_ERR_DID_RESET\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_RESET\n");
                     break;
                 case 0x9:
-                    printf ("host status = SG_ERR_DID_BAD_INTR\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_BAD_INTR\n");
                     break;
                 case 0xA:
-                    printf ("host status = SG_ERR_DID_PASSTHROUGH\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_PASSTHROUGH\n");
                     break;
                 case 0xB:
-                    printf ("host status = SG_ERR_DID_SOFT_ERROR\n");
+                    fprintf (stderr,"host status = SG_ERR_DID_SOFT_ERROR\n");
                     break;
                 default:
-                    printf ("unknown host status 0x%X\n", io_hdr->host_status);
+                    fprintf (stderr,"unknown host status 0x%X\n", io_hdr->host_status);
                     break;
             }
             //LS nibble is error, MS nibble is suggestion
             switch (io_hdr->driver_status & 0x0F) {
                 case 0:
                     driver_ok = true;
-                    printf ("driver status = OK\n");
+                    fprintf (stderr,"driver status = OK\n");
                     break;
                 case 1:
-                    printf ("*E* DRIVER_BUSY\n");
+                    fprintf (stderr,"*E* DRIVER_BUSY\n");
                     break;
                 case 2:
-                    printf ("*E* DRIVER_SOFT\n");
+                    fprintf (stderr,"*E* DRIVER_SOFT\n");
                     break;
                 case 3:
-                    printf ("*E* DRIVER_MEDIA\n");
+                    fprintf (stderr,"*E* DRIVER_MEDIA\n");
                     break;
                 case 4:
-                    printf ("*E* DRIVER_ERROR\n");
+                    fprintf (stderr,"*E* DRIVER_ERROR\n");
                     break;
                 case 5:
-                    printf ("*E* DRIVER_INVALID\n");
+                    fprintf (stderr,"*E* DRIVER_INVALID\n");
                     break;
                 case 6:
-                    printf ("*E* DRIVER_TIMEOUT\n");
+                    fprintf (stderr,"*E* DRIVER_TIMEOUT\n");
                     break;
                 case 7:
-                    printf ("*E* DRIVER_HARD\n");
+                    fprintf (stderr,"*E* DRIVER_HARD\n");
                     break;
                 case 8:
-                    printf ("*E* DRIVER_SENSE\n");
+                    fprintf (stderr,"*E* DRIVER_SENSE\n");
                     if (io_hdr->sb_len_wr > 0) {
                         int i;
-                        printf ("sense buffer :");
+                        fprintf (stderr,"sense buffer :");
                         for (i=0; i < io_hdr->sb_len_wr; i++) {
-                            printf (" %02X", io_hdr->sbp[i]);
+                            fprintf (stderr," %02X", io_hdr->sbp[i]);
                         }
                         uint8_t sense_key = io_hdr->sbp[2];
-                        printf ("\nsense key = 0x%X = ", sense_key);
+                        fprintf (stderr,"\nsense key = 0x%X = ", sense_key);
                         switch (sense_key) {
-                            case 0x00: printf ("NO SENSE"); break;
-                            case 0x01: printf ("RECOVERED ERROR"); break;
-                            case 0x02: printf ("NOT READY"); break;
-                            case 0x03: printf ("MEDIUM ERROR"); break;
-                            case 0x04: printf ("HARDWARE ERROR"); break;
-                            case 0x05: printf ("ILLEGAL REQUEST"); break;
-                            case 0x06: printf ("UNIT ATTENTION"); break;
-                            case 0x07: printf ("DATA PROTECT"); break;
-                            case 0x08: printf ("BLANK CHECK"); break;
-                            case 0x09: printf ("VENDOR SPECIFIC"); break;
-                            case 0x0A: printf ("COPY ABORTED"); break;
-                            case 0x0B: printf ("ABORTED COMMAND"); break;
-                            case 0x0D: printf ("VOLUME OVERFLOW"); break;
-                            case 0x0E: printf ("MISCOMPARE"); break;
-                            case 0x0F: printf ("COMPLETED"); break;
-                            case 0x0C: printf ("**UNKNOWN**"); break;
+                            case 0x00: fprintf (stderr,"NO SENSE"); break;
+                            case 0x01: fprintf (stderr,"RECOVERED ERROR"); break;
+                            case 0x02: fprintf (stderr,"NOT READY"); break;
+                            case 0x03: fprintf (stderr,"MEDIUM ERROR"); break;
+                            case 0x04: fprintf (stderr,"HARDWARE ERROR"); break;
+                            case 0x05: fprintf (stderr,"ILLEGAL REQUEST"); break;
+                            case 0x06: fprintf (stderr,"UNIT ATTENTION"); break;
+                            case 0x07: fprintf (stderr,"DATA PROTECT"); break;
+                            case 0x08: fprintf (stderr,"BLANK CHECK"); break;
+                            case 0x09: fprintf (stderr,"VENDOR SPECIFIC"); break;
+                            case 0x0A: fprintf (stderr,"COPY ABORTED"); break;
+                            case 0x0B: fprintf (stderr,"ABORTED COMMAND"); break;
+                            case 0x0D: fprintf (stderr,"VOLUME OVERFLOW"); break;
+                            case 0x0E: fprintf (stderr,"MISCOMPARE"); break;
+                            case 0x0F: fprintf (stderr,"COMPLETED"); break;
+                            case 0x0C: fprintf (stderr,"**UNKNOWN**"); break;
                         }
-                        printf ("\n");
+                        fprintf (stderr,"\n");
                         if (io_hdr->sbp[7] == 0x0A) {
                             //additional sense bytes
                             uint8_t ASC = io_hdr->sbp[12];
                             uint8_t ASCQ = io_hdr->sbp[13];
-                            printf ("ASC = 0x%02X ASCQ = 0x%02X\n", ASC, ASCQ);
+                            fprintf (stderr,"ASC = 0x%02X ASCQ = 0x%02X\n", ASC, ASCQ);
                         }
                     }
                     break;
                 default:
-                    printf ("unknown driver_status %X\n", io_hdr->driver_status);
+                    fprintf (stderr,"unknown driver_status %X\n", io_hdr->driver_status);
                     break;
             }
             if (!driver_ok) {
                 switch (io_hdr->driver_status & 0xF0 >> 4) {
                     case 1:
-                        printf ("suggest = RETRY\n");
+                        fprintf (stderr,"suggest = RETRY\n");
                         break;
                     case 2:
-                        printf ("suggest = ABORT\n");
+                        fprintf (stderr,"suggest = ABORT\n");
                         break;
                     case 3:
-                        printf ("suggest = REMAP\n");
+                        fprintf (stderr,"suggest = REMAP\n");
                         break;
                     case 4:
-                        printf ("suggest = DIE\n");
+                        fprintf (stderr,"suggest = DIE\n");
                         break;
                     case 8:
-                        printf ("suggest = SENSE\n");
+                        fprintf (stderr,"suggest = SENSE\n");
                         break;
                     default:
-                        printf ("unknown suggestion %X\n", io_hdr->driver_status);
+                        fprintf (stderr,"unknown suggestion %X\n", io_hdr->driver_status);
                 }
             }
         }
@@ -183,8 +183,8 @@ int check_error(int syscall_rc, char *scsi_op, sg_io_hdr_t *io_hdr) {
         io_hdr->host_status == 0) {
         return 0;
     } else {
-        printf ("*E*E*E*E*E*E*E*E*E*E*E*E\n");
-        printf ("SCSI op %s failed\n", scsi_op);
+        fprintf (stderr,"*E*E*E*E*E*E*E*E*E*E*E*E\n");
+        fprintf (stderr,"SCSI op %s failed\n", scsi_op);
         dump_error(io_hdr);
         return -1;
     }
@@ -208,7 +208,7 @@ int tsp_open( char *device ) {
         rfd = open(dev, O_RDWR);
         return 1;
     } else {
-        printf ("URK don't know how to cope with >1 open!\n");
+        fprintf (stderr,"URK don't know how to cope with >1 open!\n");
         assert(false);
         return -1;
     }
@@ -241,7 +241,7 @@ static int transtech_command(int fd,
     cmdBlk[5] = 0;  //unused
     /* for verification only*/
 #ifdef DEBUG
-    printf ("%s cmd blk = %02X %02X %02X %02X %02X %02X\n", 
+    fprintf (stderr,"%s cmd blk = %02X %02X %02X %02X %02X %02X\n", 
              command_name, cmdBlk[0], cmdBlk[1], cmdBlk[2], cmdBlk[3], cmdBlk[4], cmdBlk[5]);
 #endif
     memset(io_hdr, 0, sizeof(*io_hdr));
@@ -256,16 +256,16 @@ static int transtech_command(int fd,
     io_hdr->timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
     rc = ioctl(fd, SG_IO, io_hdr);
 #ifdef DEBUG
-    printf ("SG iohdr debug :\n");
-    printf ("\tstatus = 0x%02X\n", io_hdr->status);
-    printf ("\tmasked_status = 0x%02X\n", io_hdr->masked_status);
-    printf ("\tmsg_status = 0x%02X\n", io_hdr->msg_status);
-    printf ("\tsb_len_wr = %d\n", io_hdr->sb_len_wr);
-    printf ("\thost_status = 0x%04X\n", io_hdr->host_status);
-    printf ("\tdriver_status = 0x%04X\n", io_hdr->driver_status);
-    printf ("\tresid = %d\n", io_hdr->resid);
-    printf ("\tduration = %d\n", io_hdr->duration);
-    printf ("\tinfo = 0x%04X\n", io_hdr->info);
+    fprintf (stderr,"SG iohdr debug :\n");
+    fprintf (stderr,"\tstatus = 0x%02X\n", io_hdr->status);
+    fprintf (stderr,"\tmasked_status = 0x%02X\n", io_hdr->masked_status);
+    fprintf (stderr,"\tmsg_status = 0x%02X\n", io_hdr->msg_status);
+    fprintf (stderr,"\tsb_len_wr = %d\n", io_hdr->sb_len_wr);
+    fprintf (stderr,"\thost_status = 0x%04X\n", io_hdr->host_status);
+    fprintf (stderr,"\tdriver_status = 0x%04X\n", io_hdr->driver_status);
+    fprintf (stderr,"\tresid = %d\n", io_hdr->resid);
+    fprintf (stderr,"\tduration = %d\n", io_hdr->duration);
+    fprintf (stderr,"\tinfo = 0x%04X\n", io_hdr->info);
 #endif
     *buffer_size = io_hdr->dxfer_len - io_hdr->resid;
     return rc;
@@ -296,7 +296,7 @@ static int do_command(int fd,
     int rc, ret;
     while (!ready (fd)) {
 #ifdef DEBUG
-        printf ("%s !ready - waiting\n", command_name);
+        fprintf (stderr,"%s !ready - waiting\n", command_name);
 #endif
         usleep(100000);
     }
@@ -305,7 +305,7 @@ static int do_command(int fd,
     ret = check_error (rc, command_name, &io_hdr);
     /* for verification only*/
 #ifdef DEBUG
-    printf ("%s dxfer_len = %u, resid = %u\n", command_name, io_hdr.dxfer_len, io_hdr.resid);
+    fprintf (stderr,"%s dxfer_len = %u, resid = %u\n", command_name, io_hdr.dxfer_len, io_hdr.resid);
 #endif
     return ret;
 }
