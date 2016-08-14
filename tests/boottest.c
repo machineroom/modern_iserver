@@ -40,8 +40,14 @@ int main (int argc, char **argv) {
     rc = tsp_write(fd, boot, sizeof(boot), 2 );
     printf ("tsp_write = %d\n", rc);
     uint8_t rx[256];
-    rc = tsp_read(fd, rx, 4, 0 );
-    printf ("tsp_read = %d [%02X %02X %02X %02X]\n", rc, rx[0], rx[1], rx[2], rx[3]);
+    int tot=0;
+    do {
+        rc = tsp_read(fd, &rx[tot], 1, 1 );
+        if (rc == 1) {
+            tot++;
+        }
+    } while (rc == 1);
+    printf ("tsp_read tot = %d [%02X %02X %02X %02X %02X %02X]\n", tot, rx[0], rx[1], rx[2], rx[3], rx[4], rx[5]);
     tsp_close(fd);
 }
 
