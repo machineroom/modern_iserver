@@ -245,6 +245,15 @@ static int transtech_command(int fd,
     return rc;
 }
 
+static void request_sense (int fd) {
+    char buffer[5];
+    int buffersize = sizeof(buffer);
+    sg_io_hdr_t io_hdr;
+    memset (buffer, 0, sizeof(buffer));
+    int rc;
+    rc = transtech_command (fd, SCMD_REQUEST_SENSE, "SCMD_REQUEST_SENSE", SG_DXFER_FROM_DEV, buffer, &buffersize, DEFAULT_TIMEOUT, &io_hdr);
+}
+
 static bool ready(int fd) {
     uint8_t buff[5];
     unsigned int size = 0;
@@ -253,9 +262,13 @@ static bool ready(int fd) {
     //read unit ready status
     memset (buff, 0, sizeof(buff));
     rc = transtech_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
+    if (io_hdr.status == 0x2/*CHECK CONDITION*/) {
+        request_sense(fd);
+        rc = transtech_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
+    }
     if (rc == 0 && io_hdr.status == GOOD) {
 #ifdef DEBUG
-        fprintf (stderr,"SCMD_TEST_UNIT_READY = true\n");
+        fprintf (stderr,"\tSCMD_TEST_UNIT_READY = true\n");
 #endif
         return true;
     } else {
@@ -283,9 +296,13 @@ static int do_command(int fd,
         usleep(250000);
     }
     rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
+    if (io_hdr.status == 0x2/*CHECK CONDITION*/) {
+        request_sense(fd);
+        rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
+    }
     ret = check_error (rc, errno, command_name, &io_hdr);
 #ifdef DEBUG
-    fprintf (stderr,"%s = %d\n", command_name, ret);
+    fprintf (stderr,"\t%s = %d\n", command_name, ret);
 #endif
     return ret;
 }
@@ -333,6 +350,9 @@ static int wfd=-1;
 static int rfd=-1;
 
 int tsp_open( char *device ) {
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
     //device will be of form "sg2"
     if (wfd == -1 && rfd == -1) {
         int devnum;
@@ -371,6 +391,9 @@ int tsp_open( char *device ) {
 }
 
 int tsp_close( int fd ) {
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
     close(wfd) && close(rfd);
     wfd = -1;
     rfd = -1;
@@ -382,6 +405,9 @@ int tsp_reset( int fd ) {
     unsigned char flags;
     unsigned char protocol;
     int block_size=0;
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
     /*
      The link protocol is set to raw byte mode when the host link
      is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
@@ -389,30 +415,37 @@ int tsp_reset( int fd ) {
      protocol persists until the link is reset.
     */
     protocol = TSP_RAW_PROTOCOL;
-    flags = LFLAG_SUBSYSTEM_RESET | LFLAG_RESET_LINK | LFLAG_RESET_CONFIG;
+    /* 
+    "The four MatchBox subsystems correspond to the host input and
+    output links and thus are common to logical units 0 and 4, 1 and 5, 2
+    and 6 and 3 and 7.    
+    " 
+    */
+    flags = LFLAG_SUBSYSTEM_RESET | LFLAG_RESET_LINK;
+    ret = set_transtech_bits (wfd, flags, protocol, block_size);
+    if (ret == 0) {
+        usleep (50000);
+        flags = 0;
+        ret = set_transtech_bits (wfd, flags, protocol, block_size);
+    }
+    flags = LFLAG_RESET_LINK;
     ret = set_transtech_bits (rfd, flags, protocol, block_size);
     if (ret == 0) {
         usleep (50000);
         flags = 0;
         ret = set_transtech_bits (rfd, flags, protocol, block_size);
-        if (ret == 0) {
-            flags = LFLAG_SUBSYSTEM_RESET | LFLAG_RESET_LINK | LFLAG_RESET_CONFIG;
-            ret = set_transtech_bits (wfd, flags, protocol, block_size);
-            if (ret == 0) {
-                usleep (50000);
-                flags = 0;
-                ret = set_transtech_bits (wfd, flags, protocol, block_size);
-            }
-        }
     }
     return ret;
 }
 
 int tsp_analyse( int fd ) {
-    int ret=0;
+    int ret;
     unsigned char flags;
     unsigned char protocol;
     int block_size = 0;
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
     /*
      The link protocol is set to raw byte mode when the host link
      is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
@@ -422,10 +455,17 @@ int tsp_analyse( int fd ) {
     protocol = TSP_RAW_PROTOCOL;
     //assert reset & analyse
     flags = LFLAG_SUBSYSTEM_RESET | LFLAG_SUBSYSTEM_ANALYSE;
-    ret |= set_transtech_bits (wfd, flags, protocol, block_size);
+    /* 
+    "The four MatchBox subsystems correspond to the host input and
+    output links and thus are common to logical units 0 and 4, 1 and 5, 2
+    and 6 and 3 and 7.    
+    " 
+    */
+    ret = set_transtech_bits (wfd, flags, protocol, block_size);
     usleep (50000);
     //drop reset
-    flags &= ~LFLAG_SUBSYSTEM_RESET;
+    //flags &= ~LFLAG_SUBSYSTEM_RESET;
+    flags = 0;
     ret |= set_transtech_bits (wfd, flags, protocol, block_size);
     return ret;
 }
@@ -440,6 +480,9 @@ int tsp_write_flags( int fd, unsigned char val ) {
 int tsp_protocol( int fd, int protocol, int block_size ) {
     int ret;
     unsigned char flags;
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
     //link protocol only applies to read
     ret = get_transtech_bits (rfd, &flags, NULL, NULL);
     if (ret == 0) {
@@ -451,16 +494,19 @@ int tsp_protocol( int fd, int protocol, int block_size ) {
 int tsp_error( int fd ) {
     int ret;
     unsigned char flags;
-    ret = get_transtech_bits (rfd, &flags, NULL, NULL);
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
+    /* 
+    "The four MatchBox subsystems correspond to the host input and
+    output links and thus are common to logical units 0 and 4, 1 and 5, 2
+    and 6 and 3 and 7.    
+    " 
+    */
+    ret = get_transtech_bits (wfd, &flags, NULL, NULL);
     if (ret == 0) {
         if ((flags & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
             return 1;
-        }
-        ret = get_transtech_bits (wfd, &flags, NULL, NULL);
-        if (ret == 0) {
-            if ((flags & LFLAG_SUBSYSTEM_ERROR) == LFLAG_SUBSYSTEM_ERROR) {
-                return 1;
-            }
         }
     }
     return ret;
@@ -469,6 +515,10 @@ int tsp_error( int fd ) {
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
+    assert (length < 4097);
     ret = do_command (rfd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout);
     if (ret == 0) {
         //return bytes read
@@ -478,12 +528,34 @@ int tsp_read( int fd, void *data, size_t length, int timeout ) {
 }
 
 int tsp_write( int fd, void *data, size_t length, int timeout ) {
-    int ret;
+    int ret = 0;
     unsigned int size = length;
-    ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &size, timeout);
+    unsigned int tot_written = 0;
+    unsigned int written;
+#ifdef DEBUG
+    fprintf (stderr,"TSP : %s\n", __func__);
+#endif
+    while (size > SCSILINK_BLOCK_SIZE) {
+        written = SCSILINK_BLOCK_SIZE;
+        ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout);
+        if (ret == 0) {
+            tot_written += written;
+            data += written;
+            size -= SCSILINK_BLOCK_SIZE;
+        } else {
+            break;
+        }
+    }
+    if (ret == 0) {
+        written = size;
+        ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout);
+        if (ret == 0) {
+            tot_written += written;
+        }
+    }
     if (ret == 0) {
         //return bytes written
-        ret = size;
+        ret = tot_written;
     }
     return ret;
 }
