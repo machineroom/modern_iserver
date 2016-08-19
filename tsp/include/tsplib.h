@@ -234,5 +234,8 @@ int tsp_write_config( int fd, void *data, size_t length, int timeout );
 int tsp_connect( int fd, char n1, char l1, char n2, char l2 );
 int tsp_mknod( char *device );
 
+//not a transtech API (useful for testing though)
+int tsp_write_flags( int fd, unsigned char val );
+
 #endif
 
