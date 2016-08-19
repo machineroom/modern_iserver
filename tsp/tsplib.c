@@ -14,13 +14,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
+
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
 #include <scsi/scsi.h>
 
 #define DEFAULT_TIMEOUT (5)
-//#define DEBUG
-//#define DEBUG2
+
+static int debug_level = 0;    //set with TSPDEBUG env var
 
 static void dump_sense_buffer (sg_io_hdr_t *io_hdr) {
     if (io_hdr->sb_len_wr > 0) {
@@ -209,14 +211,14 @@ static int transtech_command(int fd,
     cmdBlk[3] = (*buffer_size >> 8)  & 0xFF;
     cmdBlk[4] = (*buffer_size >> 0)  & 0xFF;
     cmdBlk[5] = 0;  //unused
-#ifdef DEBUG
-    fprintf (stderr,"%s fd=%d dir=%s, buf sz = %d cmd blk = %02X %02X %02X %02X %02X %02X\n\tbuffer[5] = %X %X %X %X %X\n", 
-             command_name, fd, 
-             dir==SG_DXFER_FROM_DEV?"FROM":"TO",
-             *buffer_size, 
-             cmdBlk[0], cmdBlk[1], cmdBlk[2], cmdBlk[3], cmdBlk[4], cmdBlk[5],
-             buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"%s fd=%d dir=%s, buf sz = %d cmd blk = %02X %02X %02X %02X %02X %02X\n\tbuffer[5] = %X %X %X %X %X\n", 
+                 command_name, fd, 
+                 dir==SG_DXFER_FROM_DEV?"FROM":"TO",
+                 *buffer_size, 
+                 cmdBlk[0], cmdBlk[1], cmdBlk[2], cmdBlk[3], cmdBlk[4], cmdBlk[5],
+                 buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+    }
     memset(io_hdr, 0, sizeof(*io_hdr));
     io_hdr->interface_id = 'S';
     io_hdr->cmdp = cmdBlk;
@@ -229,18 +231,18 @@ static int transtech_command(int fd,
     io_hdr->timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
     errno = 0;
     rc = ioctl(fd, SG_IO, io_hdr);
-#ifdef DEBUG2
-    fprintf (stderr,"SG iohdr debug :\n");
-    fprintf (stderr,"\tstatus = 0x%02X\n", io_hdr->status);
-    fprintf (stderr,"\tmasked_status = 0x%02X\n", io_hdr->masked_status);
-    fprintf (stderr,"\tmsg_status = 0x%02X\n", io_hdr->msg_status);
-    fprintf (stderr,"\tsb_len_wr = %d\n", io_hdr->sb_len_wr);
-    fprintf (stderr,"\thost_status = 0x%04X\n", io_hdr->host_status);
-    fprintf (stderr,"\tdriver_status = 0x%04X\n", io_hdr->driver_status);
-    fprintf (stderr,"\tresid = %d\n", io_hdr->resid);
-    fprintf (stderr,"\tduration = %d\n", io_hdr->duration);
-    fprintf (stderr,"\tinfo = 0x%04X\n", io_hdr->info);
-#endif
+    if (debug_level >= 2) {
+        fprintf (stderr,"SG iohdr debug :\n");
+        fprintf (stderr,"\tstatus = 0x%02X\n", io_hdr->status);
+        fprintf (stderr,"\tmasked_status = 0x%02X\n", io_hdr->masked_status);
+        fprintf (stderr,"\tmsg_status = 0x%02X\n", io_hdr->msg_status);
+        fprintf (stderr,"\tsb_len_wr = %d\n", io_hdr->sb_len_wr);
+        fprintf (stderr,"\thost_status = 0x%04X\n", io_hdr->host_status);
+        fprintf (stderr,"\tdriver_status = 0x%04X\n", io_hdr->driver_status);
+        fprintf (stderr,"\tresid = %d\n", io_hdr->resid);
+        fprintf (stderr,"\tduration = %d\n", io_hdr->duration);
+        fprintf (stderr,"\tinfo = 0x%04X\n", io_hdr->info);
+    }
     *buffer_size = io_hdr->dxfer_len - io_hdr->resid;
     return rc;
 }
@@ -267,14 +269,14 @@ static bool ready(int fd) {
         rc = transtech_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
     }
     if (rc == 0 && io_hdr.status == GOOD) {
-#ifdef DEBUG
-        fprintf (stderr,"\tSCMD_TEST_UNIT_READY = true\n");
-#endif
+        if (debug_level >= 1) {
+            fprintf (stderr,"\tSCMD_TEST_UNIT_READY = true\n");
+        }
         return true;
     } else {
-#ifdef DEBUG
-        ret = check_error (rc, errno, "SCMD_TEST_UNIT_READY", &io_hdr);
-#endif
+        if (debug_level >= 1) {
+            ret = check_error (rc, errno, "SCMD_TEST_UNIT_READY", &io_hdr);
+        }
         return false;
     }
 }
@@ -290,9 +292,9 @@ static int do_command(int fd,
     int rc, ret;
     sg_io_hdr_t io_hdr;
     while (!ready (fd)) {
-#ifdef DEBUG
-        fprintf (stderr,"%s !ready - waiting\n", command_name);
-#endif
+        if (debug_level >= 1) {
+            fprintf (stderr,"%s !ready - waiting\n", command_name);
+        }
         usleep(250000);
     }
     rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
@@ -301,9 +303,9 @@ static int do_command(int fd,
         rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
     }
     ret = check_error (rc, errno, command_name, &io_hdr);
-#ifdef DEBUG
-    fprintf (stderr,"\t%s = %d\n", command_name, ret);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"\t%s = %d\n", command_name, ret);
+    }
     return ret;
 }
 
@@ -350,9 +352,14 @@ static int wfd=-1;
 static int rfd=-1;
 
 int tsp_open( char *device ) {
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    char *debug_str;
+    debug_str = getenv ("TSPDEBUG");
+    if (debug_str != NULL) {
+        debug_level = atoi (debug_str);
+    }
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     //device will be of form "sg2"
     if (wfd == -1 && rfd == -1) {
         int devnum;
@@ -371,9 +378,9 @@ int tsp_open( char *device ) {
         condition. A REQUEST SENSE command can be performed returning
         GOOD status (if no error occurs) clearing the unit attention condition.
         */
-#ifdef DEBUG
-        fprintf (stderr,"tsp : doing first time initialisation\n");
-#endif
+        if (debug_level >= 1) {
+            fprintf (stderr,"tsp : doing first time initialisation\n");
+        }
         char buffer[5];
         int buffersize = sizeof(buffer);
         sg_io_hdr_t io_hdr;
@@ -391,9 +398,9 @@ int tsp_open( char *device ) {
 }
 
 int tsp_close( int fd ) {
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     close(wfd) && close(rfd);
     wfd = -1;
     rfd = -1;
@@ -405,9 +412,9 @@ int tsp_reset( int fd ) {
     unsigned char flags;
     unsigned char protocol;
     int block_size=0;
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     /*
      The link protocol is set to raw byte mode when the host link
      is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
@@ -443,9 +450,9 @@ int tsp_analyse( int fd ) {
     unsigned char flags;
     unsigned char protocol;
     int block_size = 0;
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     /*
      The link protocol is set to raw byte mode when the host link
      is   reset  by  a  call  to  tsp_reset(),  tsp_analyse()  or
@@ -480,9 +487,9 @@ int tsp_write_flags( int fd, unsigned char val ) {
 int tsp_protocol( int fd, int protocol, int block_size ) {
     int ret;
     unsigned char flags;
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     //link protocol only applies to read
     ret = get_transtech_bits (rfd, &flags, NULL, NULL);
     if (ret == 0) {
@@ -494,9 +501,9 @@ int tsp_protocol( int fd, int protocol, int block_size ) {
 int tsp_error( int fd ) {
     int ret;
     unsigned char flags;
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     /* 
     "The four MatchBox subsystems correspond to the host input and
     output links and thus are common to logical units 0 and 4, 1 and 5, 2
@@ -515,9 +522,9 @@ int tsp_error( int fd ) {
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     assert (length < 4097);
     ret = do_command (rfd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout);
     if (ret == 0) {
@@ -532,9 +539,9 @@ int tsp_write( int fd, void *data, size_t length, int timeout ) {
     unsigned int size = length;
     unsigned int tot_written = 0;
     unsigned int written;
-#ifdef DEBUG
-    fprintf (stderr,"TSP : %s\n", __func__);
-#endif
+    if (debug_level >= 1) {
+        fprintf (stderr,"TSP : %s\n", __func__);
+    }
     while (size > SCSILINK_BLOCK_SIZE) {
         written = SCSILINK_BLOCK_SIZE;
         ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout);
