@@ -30,7 +30,7 @@
 static char *CMS_Id = "LINKOPS_H:LOPS_C.AAAA-FILE;1(15-JAN-92)";
 
 #include <stdio.h>
-
+#include <stdint.h>
 #include "types.h"
 #include "linkops.h"
 #include "hbeat.h"
@@ -300,7 +300,7 @@ unsigned char *buffer;
   unsigned char *bufptr;
   unsigned char poke_command[5];
   union {
-    long int as_short;
+    uint16_t as_short;
     unsigned char as_bytes[2];
   } tmp;
   
@@ -348,7 +348,7 @@ unsigned char *buffer;
   unsigned char *bufptr;
   unsigned char poke_command[9];
   union {
-    long int as_long;
+    uint32_t as_long;
     unsigned char as_bytes[4];
   } tmp;
   
@@ -403,7 +403,7 @@ unsigned char *buffer;
   unsigned char peek_command[3];
   
   union {
-    long int as_short;
+    uint16_t as_short;
     unsigned char as_bytes[2];
   } tmp_address;
   
@@ -455,7 +455,7 @@ unsigned char *buffer;
   unsigned char peek_command[5];
   
   union {
-    long int as_long;
+    uint32_t as_long;
     unsigned char as_bytes[4];
   } tmp_address;
   
