@@ -10,10 +10,6 @@ int main (int argc, char **argv) {
     printf ("tsp_open (%s) = %d\n", argv[1], fd);
     rc = tsp_reset(fd);
     printf ("tsp_reset = %d\n", rc);
-/*    rc = tsp_analyse(wfd);
-    printf ("tsp_analyse = %d\n", rc);
-    rc = tsp_error(wfd);
-    printf ("tsp_error = %d\n", rc);*/
     rc = tsp_protocol(fd, TSP_RAW_PROTOCOL, 4096);
     printf ("tsp_protocol = %d\n", rc);
     //blatant copy from https://github.com/hessch/rpilink/blob/master/utils/tdetect.py
