@@ -24,6 +24,11 @@
 
 static int debug_level = 0;    //set with TSPDEBUG env var
 
+//TODO assuming only single use!
+//need to maintain mapping table and dish out our own virtul fd's
+static int wfd=-1;
+static int rfd=-1;
+
 static void dump_sense_buffer (sg_io_hdr_t *io_hdr) {
     if (io_hdr->sb_len_wr > 0) {
         int i;
@@ -206,13 +211,13 @@ static int transtech_command(int fd,
     memset(&cmdBlk, 0, sizeof(cmdBlk));
     memset(sense_buffer, 0, sizeof(sense_buffer));
     cmdBlk[0] = command;
-    cmdBlk[1] = 0;  //LUN;
+    cmdBlk[1] = 0;  //LUN (TODO : should this be set? seems to work OK without!)
     cmdBlk[2] = (*buffer_size >> 16) & 0xFF;
     cmdBlk[3] = (*buffer_size >> 8)  & 0xFF;
     cmdBlk[4] = (*buffer_size >> 0)  & 0xFF;
     cmdBlk[5] = 0;  //unused
-    if (debug_level >= 1) {
-        fprintf (stderr,"%s fd=%d dir=%s, buf sz = %d cmd blk = %02X %02X %02X %02X %02X %02X\n\tbuffer[5] = %X %X %X %X %X\n", 
+    if (debug_level > 0) {
+        fprintf (stderr,"%s fd=%d dir=%s, buf sz = %d cmd blk = %02X %02X %02X %02X %02X %02X\n\tIN buffer[5] = %02X %02X %02X %02X %02X\n", 
                  command_name, fd, 
                  dir==SG_DXFER_FROM_DEV?"FROM":"TO",
                  *buffer_size, 
@@ -231,7 +236,7 @@ static int transtech_command(int fd,
     io_hdr->timeout = timeout * 1000;     /* TSP lib is seconds, sg driver is ms */
     errno = 0;
     rc = ioctl(fd, SG_IO, io_hdr);
-    if (debug_level >= 2) {
+    if (debug_level > 1) {
         fprintf (stderr,"SG iohdr debug :\n");
         fprintf (stderr,"\tstatus = 0x%02X\n", io_hdr->status);
         fprintf (stderr,"\tmasked_status = 0x%02X\n", io_hdr->masked_status);
@@ -243,17 +248,20 @@ static int transtech_command(int fd,
         fprintf (stderr,"\tduration = %d\n", io_hdr->duration);
         fprintf (stderr,"\tinfo = 0x%04X\n", io_hdr->info);
     }
+    if (debug_level > 0) {
+        fprintf (stderr,"\tOUT buffer[5] = %02X %02X %02X %02X %02X\n", 
+                 buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+    }
     *buffer_size = io_hdr->dxfer_len - io_hdr->resid;
     return rc;
 }
 
-static void request_sense (int fd) {
+static void request_sense (int fd, sg_io_hdr_t *io_hdr) {
     char buffer[5];
     int buffersize = sizeof(buffer);
-    sg_io_hdr_t io_hdr;
     memset (buffer, 0, sizeof(buffer));
     int rc;
-    rc = transtech_command (fd, SCMD_REQUEST_SENSE, "SCMD_REQUEST_SENSE", SG_DXFER_FROM_DEV, buffer, &buffersize, DEFAULT_TIMEOUT, &io_hdr);
+    rc = transtech_command (fd, SCMD_REQUEST_SENSE, "SCMD_REQUEST_SENSE", SG_DXFER_FROM_DEV, buffer, &buffersize, DEFAULT_TIMEOUT, io_hdr);
 }
 
 static bool ready(int fd) {
@@ -265,16 +273,16 @@ static bool ready(int fd) {
     memset (buff, 0, sizeof(buff));
     rc = transtech_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
     if (io_hdr.status == 0x2/*CHECK CONDITION*/) {
-        request_sense(fd);
+        request_sense(fd, &io_hdr);
         rc = transtech_command (fd, SCMD_TEST_UNIT_READY, "SCMD_TEST_UNIT_READY", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
     }
-    if (rc == 0 && io_hdr.status == GOOD) {
-        if (debug_level >= 1) {
+    if (rc == 0 && io_hdr.status == 0/*GOOD*/) {
+        if (debug_level > 0) {
             fprintf (stderr,"\tSCMD_TEST_UNIT_READY = true\n");
         }
         return true;
     } else {
-        if (debug_level >= 1) {
+        if (debug_level > 0) {
             ret = check_error (rc, errno, "SCMD_TEST_UNIT_READY", &io_hdr);
         }
         return false;
@@ -287,69 +295,61 @@ static int do_command(int fd,
                       int dir, 
                       uint8_t *buffer, 
                       unsigned int *buffer_size, 
-                      unsigned int timeout)
+                      unsigned int timeout,
+                      sg_io_hdr_t *io_hdr)
 {
-    int rc, ret;
-    sg_io_hdr_t io_hdr;
+    int rc;
     while (!ready (fd)) {
-        if (debug_level >= 1) {
+        if (debug_level > 0) {
             fprintf (stderr,"%s !ready - waiting\n", command_name);
         }
         usleep(250000);
     }
-    rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
-    if (io_hdr.status == 0x2/*CHECK CONDITION*/) {
-        request_sense(fd);
-        rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, &io_hdr);
-    }
-    ret = check_error (rc, errno, command_name, &io_hdr);
-    if (debug_level >= 1) {
-        fprintf (stderr,"\t%s = %d\n", command_name, ret);
-    }
-    return ret;
+    rc = transtech_command (fd, command, command_name, dir, buffer, buffer_size, timeout, io_hdr);
+    return rc;
 }
 
 static int get_transtech_bits (int fd, unsigned char *flags, unsigned char *protocol, int *block_size) {
     uint8_t buff[5];
     unsigned int size = sizeof(buff);
-    int ret;
+    sg_io_hdr_t io_hdr;
+    int rc, ret;
     //read FLAGS
-    ret = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT);
-    if (flags != NULL) {
-        *flags = buff[0];
-    }
-    if (protocol != NULL) {
-        *protocol = buff[1];
-    }
-    if (block_size != NULL) {
-        *block_size = buff[2];
-        *block_size <<= 8;
-        *block_size |= buff[3];
-        *block_size <<= 8;
-        *block_size |= buff[4];
+    rc = do_command (fd, SCMD_READ_FLAGS, "SCMD_READ_FLAGS", SG_DXFER_FROM_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
+    ret = check_error(rc, errno, "SCMD_READ_FLAGS", &io_hdr);
+    if (ret == 0) {
+        if (flags != NULL) {
+            *flags = buff[0];
+        }
+        if (protocol != NULL) {
+            *protocol = buff[1];
+        }
+        if (block_size != NULL) {
+            *block_size = buff[2];
+            *block_size <<= 8;
+            *block_size |= buff[3];
+            *block_size <<= 8;
+            *block_size |= buff[4];
+        }
     }
     return ret;
 }
 
 static int set_transtech_bits (int fd, unsigned char flags, unsigned char protocol, int block_size) {
-    int ret;
     uint8_t buff[5];
     unsigned int size = sizeof(buff);
+    sg_io_hdr_t io_hdr;
+    int rc;
     buff[0] = flags;
     buff[1] = protocol;
     buff[2] = (block_size >> 16) & 0xFF;
     buff[3] = (block_size >> 8)  & 0xFF;
     buff[4] = (block_size >> 0)  & 0xFF;
-    ret = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT);
-    return ret;
+    rc = do_command (fd, SCMD_WRITE_FLAGS, "SCMD_WRITE_FLAGS", SG_DXFER_TO_DEV, buff, &size, DEFAULT_TIMEOUT, &io_hdr);
+    return check_error(rc, errno, "SCMD_WRITE_FLAGS", &io_hdr);
 }
 
 /* Library function prototypes */
-
-//TODO assuming only single use!
-//need to maintain mapping table and dish out our own virtul fd's
-static int wfd=-1;
-static int rfd=-1;
 
 int tsp_open( char *device ) {
     char *debug_str;
@@ -357,7 +357,7 @@ int tsp_open( char *device ) {
     if (debug_str != NULL) {
         debug_level = atoi (debug_str);
     }
-    if (debug_level >= 1) {
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     //device will be of form "sg2"
@@ -378,7 +378,7 @@ int tsp_open( char *device ) {
         condition. A REQUEST SENSE command can be performed returning
         GOOD status (if no error occurs) clearing the unit attention condition.
         */
-        if (debug_level >= 1) {
+        if (debug_level > 0) {
             fprintf (stderr,"tsp : doing first time initialisation\n");
         }
         char buffer[5];
@@ -398,7 +398,7 @@ int tsp_open( char *device ) {
 }
 
 int tsp_close( int fd ) {
-    if (debug_level >= 1) {
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     close(wfd) && close(rfd);
@@ -412,7 +412,7 @@ int tsp_reset( int fd ) {
     unsigned char flags;
     unsigned char protocol;
     int block_size=0;
-    if (debug_level >= 1) {
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     /*
@@ -435,13 +435,9 @@ int tsp_reset( int fd ) {
         flags = 0;
         ret = set_transtech_bits (wfd, flags, protocol, block_size);
     }
+    //"The LR and CLR bits are self-clearing."
     flags = LFLAG_RESET_LINK;
     ret = set_transtech_bits (rfd, flags, protocol, block_size);
-    if (ret == 0) {
-        usleep (50000);
-        flags = 0;
-        ret = set_transtech_bits (rfd, flags, protocol, block_size);
-    }
     return ret;
 }
 
@@ -450,7 +446,7 @@ int tsp_analyse( int fd ) {
     unsigned char flags;
     unsigned char protocol;
     int block_size = 0;
-    if (debug_level >= 1) {
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     /*
@@ -469,11 +465,13 @@ int tsp_analyse( int fd ) {
     " 
     */
     ret = set_transtech_bits (wfd, flags, protocol, block_size);
-    usleep (50000);
-    //drop reset
-    //flags &= ~LFLAG_SUBSYSTEM_RESET;
-    flags = 0;
-    ret |= set_transtech_bits (wfd, flags, protocol, block_size);
+    if (ret == 0) {
+        usleep (50000);
+        //drop reset
+        //flags &= ~LFLAG_SUBSYSTEM_RESET;
+        flags = 0;
+        ret = set_transtech_bits (wfd, flags, protocol, block_size);
+    }
     return ret;
 }
 
@@ -487,7 +485,7 @@ int tsp_write_flags( int fd, unsigned char val ) {
 int tsp_protocol( int fd, int protocol, int block_size ) {
     int ret;
     unsigned char flags;
-    if (debug_level >= 1) {
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     //link protocol only applies to read
@@ -501,7 +499,7 @@ int tsp_protocol( int fd, int protocol, int block_size ) {
 int tsp_error( int fd ) {
     int ret;
     unsigned char flags;
-    if (debug_level >= 1) {
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     /* 
@@ -522,14 +520,28 @@ int tsp_error( int fd ) {
 int tsp_read( int fd, void *data, size_t length, int timeout ) {
     int ret;
     unsigned int size = length;
-    if (debug_level >= 1) {
+    sg_io_hdr_t io_hdr;
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     assert (length < 4097);
-    ret = do_command (rfd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout);
-    if (ret == 0) {
+    ret = do_command (rfd, SCMD_RECEIVE, "SCMD_RECEIVE", SG_DXFER_FROM_DEV, data, &size, timeout, &io_hdr);
+    if (ret == 0 && io_hdr.status == 0/*GOOD*/) {
         //return bytes read
         ret = size;
+    } else {
+        /*
+        "This command will terminate after one second if the requested data
+        (or one 4096 byte block) is not received on the corresponding link.
+        CHECK CONDITION status is returned. A subsequent REQUEST
+        SENSE command returns sense data with Sense Key set to ABORTED
+        COMMAND (8h), Additional Sense Code set to 08h and Additional
+        Sense Code Qualifier set to 01h."
+        */
+        if (io_hdr.status == 0x2/*CHECK CONDITION*/) {
+            //probably a timeout
+            ret = 0;
+        }
     }
     return ret;
 }
@@ -539,23 +551,29 @@ int tsp_write( int fd, void *data, size_t length, int timeout ) {
     unsigned int size = length;
     unsigned int tot_written = 0;
     unsigned int written;
-    if (debug_level >= 1) {
+    sg_io_hdr_t io_hdr;
+    if (debug_level > 0) {
         fprintf (stderr,"TSP : %s\n", __func__);
     }
     while (size > SCSILINK_BLOCK_SIZE) {
         written = SCSILINK_BLOCK_SIZE;
-        ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout);
+        ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout, &io_hdr);
         if (ret == 0) {
-            tot_written += written;
-            data += written;
-            size -= SCSILINK_BLOCK_SIZE;
+            if (written == SCSILINK_BLOCK_SIZE) {
+                tot_written += written;
+                data += written;
+                size -= SCSILINK_BLOCK_SIZE;
+            } else {
+                ret = -1;
+                break;
+            }
         } else {
             break;
         }
     }
     if (ret == 0) {
         written = size;
-        ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout);
+        ret = do_command (wfd, SCMD_SEND, "SCMD_SEND", SG_DXFER_TO_DEV, data, &written, timeout, &io_hdr);
         if (ret == 0) {
             tot_written += written;
         }
