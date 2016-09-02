@@ -248,11 +248,11 @@ static int transtech_command(int fd,
         fprintf (stderr,"\tduration = %d\n", io_hdr->duration);
         fprintf (stderr,"\tinfo = 0x%04X\n", io_hdr->info);
     }
-    if (debug_level > 0) {
-        fprintf (stderr,"\tOUT buffer[5] = %02X %02X %02X %02X %02X\n", 
-                 buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
-    }
     *buffer_size = io_hdr->dxfer_len - io_hdr->resid;
+    if (debug_level > 0) {
+        fprintf (stderr,"\tOUT bytes read = %d\n\tOUT buffer[5] = %02X %02X %02X %02X %02X\n", 
+                 *buffer_size, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+    }
     return rc;
 }
 
