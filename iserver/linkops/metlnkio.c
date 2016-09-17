@@ -65,10 +65,6 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #include <string.h>
 #endif
 
-#ifdef PCTCP
-#include <pctcp/syscalls.h>
-#endif
-
 /* Link method flags */
 #ifdef DOS
 #define LNKb004
@@ -127,14 +123,6 @@ struct VECTOR analyselink_vector[MAX_LMETHODS];
 struct VECTOR testerror_vector[MAX_LMETHODS];
 struct VECTOR testread_vector[MAX_LMETHODS];
 struct VECTOR testwrite_vector[MAX_LMETHODS];
-
-#ifdef SUN3
-#define SUN3OR4 cowabunga
-#endif
-
-#ifdef SUN4
-#define SUN3OR4 cowabunga
-#endif
 
 #ifdef LNKtcp
 extern int TCPOpenLink ();
@@ -227,119 +215,20 @@ char *name;
   testread_vector[TSP].function    = TSPTestRead;
   testwrite_vector[TSP].function   = TSPTestWrite;
 #endif
+     
+#ifdef LNKtcp
+  method_isavailable[TCP_LINKOPS] = true;
+  openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
+  closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
+  readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
+  writelink_vector[TCP_LINKOPS].function    = TCPWriteLink;
+  resetlink_vector[TCP_LINKOPS].function    = TCPResetLink;
+  analyselink_vector[TCP_LINKOPS].function  = TCPAnalyseLink;
+  testerror_vector[TCP_LINKOPS].function    = TCPTestError;
+  testread_vector[TCP_LINKOPS].function     = TCPTestRead;
+  testwrite_vector[TCP_LINKOPS].function    = TCPTestWrite;
+#endif
       
-#ifdef SUN3OR4
-
-#ifdef LNKb011
-  method_isavailable[B011] = true;
-  openlink_vector[B011].function    = B011OpenLink;
-  closelink_vector[B011].function   = B011CloseLink;
-  readlink_vector[B011].function    = B011ReadLink;
-  writelink_vector[B011].function   = B011WriteLink;
-  resetlink_vector[B011].function   = B011ResetLink;
-  analyselink_vector[B011].function = B011AnalyseLink;
-  testerror_vector[B011].function   = B011TestError;
-  testread_vector[B011].function    = B011TestRead;
-  testwrite_vector[B011].function   = B011TestWrite;
-#endif
-
-#ifdef LNKb014
-  method_isavailable[B014] = true;
-  openlink_vector[B014].function    = B014OpenLink;
-  closelink_vector[B014].function   = B014CloseLink;
-  readlink_vector[B014].function    = B014ReadLink;
-  writelink_vector[B014].function   = B014WriteLink;
-  resetlink_vector[B014].function   = B014ResetLink;
-  analyselink_vector[B014].function = B014AnalyseLink;
-  testerror_vector[B014].function   = B014TestError;
-  testread_vector[B014].function    = B014TestRead;
-  testwrite_vector[B014].function   = B014TestWrite;
-#endif
-    
-#ifdef LNKb016
-  method_isavailable[B016] = true;
-  openlink_vector[B016].function    = B016OpenLink;
-  closelink_vector[B016].function   = B016CloseLink;
-  readlink_vector[B016].function    = B016ReadLink;
-  writelink_vector[B016].function   = B016WriteLink;
-  resetlink_vector[B016].function   = B016ResetLink;
-  analyselink_vector[B016].function = B016AnalyseLink;
-  testerror_vector[B016].function   = B016TestError;
-  testread_vector[B016].function    = B016TestRead;
-  testwrite_vector[B016].function   = B016TestWrite;
-#endif
-    
-#ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = true;
-  openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
-  closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
-  readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
-  writelink_vector[TCP_LINKOPS].function    = TCPWriteLink;
-  resetlink_vector[TCP_LINKOPS].function    = TCPResetLink;
-  analyselink_vector[TCP_LINKOPS].function  = TCPAnalyseLink;
-  testerror_vector[TCP_LINKOPS].function    = TCPTestError;
-  testread_vector[TCP_LINKOPS].function     = TCPTestRead;
-  testwrite_vector[TCP_LINKOPS].function    = TCPTestWrite;
-#endif
-
-#ifdef LNKtd
-  method_isavailable[TD] = true;
-  openlink_vector[TD].function    = TDOpenLink;
-  closelink_vector[TD].function   = TDCloseLink;
-  readlink_vector[TD].function    = TDReadLink;
-  writelink_vector[TD].function   = TDWriteLink;
-  resetlink_vector[TD].function   = TDResetLink;
-  analyselink_vector[TD].function = TDAnalyseLink;
-  testerror_vector[TD].function   = TDTestError;
-  testread_vector[TD].function    = NULL;
-  testwrite_vector[TD].function   = NULL;
-#endif
-#endif /* SUN3OR4 */
-   
-#ifdef SGI
-#ifdef LNKtd
-  method_isavailable[TD] = true;
-  openlink_vector[TD].function    = TDOpenLink;
-  closelink_vector[TD].function   = TDCloseLink;
-  readlink_vector[TD].function    = TDReadLink;
-  writelink_vector[TD].function   = TDWriteLink;
-  resetlink_vector[TD].function   = TDResetLink;
-  analyselink_vector[TD].function = TDAnalyseLink;
-  testerror_vector[TD].function   = TDTestError;
-  testread_vector[TD].function    = NULL;
-  testwrite_vector[TD].function   = NULL;
-#endif
-#endif
-
-#ifdef SUN386
-#ifdef S386
-  method_isavailable[B008] = true;
-  openlink_vector[B008].function    = S386OpenLink;
-  closelink_vector[B008].function   = S386CloseLink;
-  readlink_vector[B008].function    = S386ReadLink;
-  writelink_vector[B008].function   = S386WriteLink;
-  resetlink_vector[B008].function   = S386ResetLink;
-  analyselink_vector[B008].function = S386AnalyseLink;
-  testerror_vector[B008].function   = S386TestError;
-  testread_vector[B008].function    = S386TestRead;
-  testwrite_vector[B008].function   = S386TestWrite;
-#endif
-
-#ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = true;
-  openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
-  closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
-  readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
-  writelink_vector[TCP_LINKOPS].function    = TCPWriteLink;
-  resetlink_vector[TCP_LINKOPS].function    = TCPResetLink;
-  analyselink_vector[TCP_LINKOPS].function  = TCPAnalyseLink;
-  testerror_vector[TCP_LINKOPS].function    = TCPTestError;
-  testread_vector[TCP_LINKOPS].function     = TCPTestRead;
-  testwrite_vector[TCP_LINKOPS].function    = TCPTestWrite;
-#endif
-#endif /* SUN386 */
-
-#ifdef PC
 #ifdef LNKb004
   method_isavailable[B004] = true;
   openlink_vector[B004].function    = B004OpenLink;
@@ -366,47 +255,6 @@ char *name;
   testwrite_vector[B008].function   = B008TestWrite;
 #endif
 
-#ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = true;
-  openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
-  closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
-  readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
-  writelink_vector[TCP_LINKOPS].function    = TCPWriteLink;
-  resetlink_vector[TCP_LINKOPS].function    = TCPResetLink;
-  analyselink_vector[TCP_LINKOPS].function  = TCPAnalyseLink;
-  testerror_vector[TCP_LINKOPS].function    = TCPTestError;
-  testread_vector[TCP_LINKOPS].function     = TCPTestRead;
-  testwrite_vector[TCP_LINKOPS].function    = TCPTestWrite;
-#endif
-#endif /* SUN386 */
-
-#ifdef VAX
-#ifdef LNKqt0
-  method_isavailable[QT0] = true;
-  openlink_vector[QT0].function    = QT0OpenLink;
-  closelink_vector[QT0].function   = QT0CloseLink;
-  readlink_vector[QT0].function    = QT0ReadLink;
-  writelink_vector[QT0].function   = QT0WriteLink;
-  resetlink_vector[QT0].function   = QT0ResetLink;
-  analyselink_vector[QT0].function = QT0AnalyseLink;
-  testerror_vector[QT0].function   = QT0TestError;
-  testread_vector[QT0].function    = QT0TestRead;
-  testwrite_vector[QT0].function   = QT0TestWrite;
-#endif
-
-#ifdef LNKtcp
-  method_isavailable[TCP_LINKOPS] = true;
-  openlink_vector[TCP_LINKOPS].function     = TCPOpenLink;
-  closelink_vector[TCP_LINKOPS].function    = TCPCloseLink;
-  readlink_vector[TCP_LINKOPS].function     = TCPReadLink;
-  writelink_vector[TCP_LINKOPS].function    = TCPWriteLink;
-  resetlink_vector[TCP_LINKOPS].function    = TCPResetLink;
-  analyselink_vector[TCP_LINKOPS].function  = TCPAnalyseLink;
-  testerror_vector[TCP_LINKOPS].function    = TCPTestError;
-  testread_vector[TCP_LINKOPS].function     = TCPTestRead;
-  testwrite_vector[TCP_LINKOPS].function    = TCPTestWrite;
-#endif
-#endif /* VAX */
 
   METAmethod = HW_X;
    
@@ -506,28 +354,11 @@ char *name;
 #ifdef LNKtcp
     /**
      ** deduce name of this machine
-     ** Only call gethostname() if we have network software installed.
      **/
-#ifdef PCNFS
-    if (is_pc_nfs_installed()) {
-#endif
-#ifdef PCTCP
-    if (vec_search()) {
-#endif
-      if (gethostname(hostname, HOSTNAMELEN) < 0) {
-         ErrorMessage (fprintf (stderr, "Error       : module[metlnkio.c], function [OpenLink]\n -> gethostname failed\n") );
-         return (ER_LINK_SOFT);
-       }
-#if defined(PCNFS) || defined(PCTCP)
+    if (gethostname(hostname, HOSTNAMELEN) < 0) {
+      ErrorMessage (fprintf (stderr, "Error       : module[metlnkio.c], function [OpenLink]\n -> gethostname failed\n") );
+      return (ER_LINK_SOFT);
     }
-    else {
-      if ((contains_at == true) && (StringCaseCmp (internal_machine, "localhost") == false)) {
-        ErrorMessage (fprintf (stderr, "Error       : module[metlnkio.c], function [OpenLink]\n -> can't access remote [%s] TCP not installed\n", name ) );
-        return (ER_LINK_SOFT);
-      }
-      (void) strcpy (hostname, "localhost");
-    }
-#endif
 #else
     /* no tcp resource so setup default name */
     strcpy (hostname, "localhost");

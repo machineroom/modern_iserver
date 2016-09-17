@@ -54,15 +54,6 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 
 #include <stdio.h>
 
-#ifdef WINTCP
-extern int uerrno;
-#define ERRNO uerrno
-#endif
-
-#ifdef DECTCP
-#define ERRNO errno
-#endif
-
 #ifdef LINUX
 #include <errno.h>
 #define ERRNO errno
@@ -70,75 +61,15 @@ extern int uerrno;
 #include <unistd.h>
 #endif
 
-#ifdef PCNFS
-/* #include "pcntypes.h" */  /* PC-NFS Toolkit v2.0 has these defined */
-#include <sys/tk_types.h>    /* PC-NFS Toolkit v2.0 defines */
-extern int errno;
-#define ERRNO errno
-#include <tk_errno.h>
-#include <dos.h>             /* To allow call to error-handler */
-union REGS dos_regs;
-#else
 #include <errno.h>
-#endif /* PCNFS */
 
-#ifdef PCTCP
-#include "errno.h"
-#define ERRNO errno
-#endif
-
-#ifdef SUNTCP
-#define ERRNO errno
-#endif
-
-#ifdef DECTCP
-#include <types.h>
-#include <socket.h>
-#include <time.h>
-#include <in.h>
-#include <netdb.h>
-#include <psldef.h>
-#include <descrip.h>
-#include <ssdef.h>
-#include <iodef.h>
-#else
 #include <sys/types.h>
 #include <sys/socket.h>
-#ifdef PCNFS
-#include <sys/nfs_time.h>
-#else
 #include <sys/time.h>
-#endif /* PCNFS */
 #include <netinet/in.h>
 #include <netdb.h>
-#ifndef WINTCP
-#include <memory.h>
-#endif /* WINTCP */
-#endif /* DECTCP */
 
-#ifdef WINTCP
-#include <psldef.h>
-#include <time.h>
-#include <descrip.h>
-#include <ssdef.h>
-#include <vms/iodef.h>
-#include <sys/errno.h>
-#endif
-
-#ifdef VMS
-#include <string.h>
-#else
-#ifdef MSDOS
-#include <string.h>
-#include <malloc.h>
-#else
-#ifdef SOLARIS
-#include <string.h>
-#else
 #include <strings.h>
-#endif
-#endif /* MSDOS */
-#endif /* VMS */
 
 #include "types.h"
 #include "linkops.h"  
@@ -247,10 +178,6 @@ char *buffer;
       return (STATUS_COMMS_FATAL);
     }
     if (data_written < 0) {
-#ifdef PCNFS
-      if (ERRNO == EINTR)
-        int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
       switch (ERRNO) {
         case ENOBUFS: /* not enough buffers, try again */
           DebugMessage (fprintf (stderr, "Warning     : couldn't send, trying again\n") );
@@ -265,6 +192,7 @@ char *buffer;
     left_to_write = left_to_write - data_written;
     buffer = buffer + data_written;
   }
+  DebugMessage (fprintf (stderr, "Sent %d bytes\n",to_write) );
   
   return (STATUS_NOERROR);
 }
@@ -285,10 +213,6 @@ unsigned char *buffer;
   while (left_to_read > 0) {
     data_read = recv (sock, (char *)buffer, left_to_read, 0);
     if (data_read < 0) {
-#ifdef PCNFS
-      if (ERRNO == EINTR)
-          int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
       (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoSocketRead]\n -> recv failed, errno=[%d]\n", ERRNO);
       return (STATUS_COMMS_FATAL);
     }
@@ -319,87 +243,12 @@ int to_read;
 long int timeout;
 unsigned char *buffer;
 {
-#ifdef WINTCP
-#define time_event (unsigned long int) 1  /* Event flags and masks */
-#define read_event (unsigned long int) 2
-#define read_mask  (unsigned long int) 4
-#define event_mask (unsigned long int) 6
-
-#define IO$_RECEIVE IO$_READVBLK  /* See WIN/TCP reference manual */
-  int bytes_read;
-  unsigned long int flags;
-  int status;               /* status is consistantly ignored */
-  int vms_delta_time[2];    /* To store our backdoor version of VMS time */
-  int read_iosb[2];         /* i/o status block */
-
-  vms_delta_time[1] = -1;
-  vms_delta_time[0] = timeout * -10; /* convert ms to VMS 100 nS intervals */
-
-  /* Queue read */
-  status = SYS$QIO(read_event, sock, IO$_RECEIVE, read_iosb, 0, 0, buffer, to_read, 0, 0, 0, 0);
-  if (status != SS$_NORMAL) {
-    (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoTimedSocketRead]\n -> Abnormal QIO status [%d]\n", status);
-    return (TIMEDSTATUSfailure);
-  };
-	
-  /* Set up timer */
-  status = SYS$SETIMR(time_event, &vms_delta_time, 0, 0);
-  if (status != SS$_NORMAL) {
-    (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoTimedSocketRead]\n -> Abnormal timer status [%d]\n", status);
-    return (TIMEDSTATUSfailure);
-  };
-	
-  /* Wait for read or timer event flag top be set */
-  status = SYS$WFLOR(read_event, event_mask);
-  if (status != SS$_NORMAL) {
-    (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoTimedSocketRead]\n -> Abnormal WFLOR status [%d]\n", status);
-    return (TIMEDSTATUSfailure);
-  };
-	
-  /* Findout which event flag was set */
-  status = SYS$READEF(read_event, &flags);
-  if ((status != SS$_WASSET) && (status != SS$_WASCLR)) {
-    (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoTimedSocketRead]\n -> Abnormal READEF status [%d]\n", status);
-    return (TIMEDSTATUSfailure);
-  };
-
-  if ((flags & read_mask) == read_mask)  { /* It was a read, not a timeout */
-    int fnresult = read_iosb[0] & 0XFFFF;
-
-    status = SYS$CANTIM(0, PSL$C_USER);  /* cancel timer */
-
-    /* Extract length of data from i/o status block */
-    bytes_read = (read_iosb[0] & 0XFFFF0000) >> 16;
-    if (bytes_read != to_read) {
-      (void) sprintf (lnkops_errorstring, "#####only read (%d) bytes, asked for [%d]\n", bytes_read, to_read);
-      return (TIMEDSTATUSfailure);
-    } else {
-      return (TIMEDSTATUSdata);
-    }
-    
-  } else {
-    status = SYS$CANCEL(sock);
-    return (TIMEDSTATUSnodata);
-  }
-}
-
-#else /* not WINTCP */
   int fdwidth, data_read, result;
   struct timeval delay;
   int timeout_looping = 0;
   
-#ifdef DECTCP
-  int read_fds;
-#else /* DECTCP */
 fd_set read_fds;
-#endif /* DECTCP */
   
-#ifdef PCTCP
-  if (timeout == 0L) {
-    timeout_looping = 1;
-    timeout = (ONESECOND * 8);
-  }
-#endif
   if (timeout >= ONESECOND) {    
     delay.tv_sec = (int)(timeout / ONESECOND);
     delay.tv_usec = (int)(timeout % ONESECOND);
@@ -408,57 +257,29 @@ fd_set read_fds;
     delay.tv_usec = (int)timeout; /* uS */
   }
   
-#ifdef PCTCP
- do {
-#endif
 
-#ifdef DECTCP
-  read_fds = (1 << sock);
-#else
   FD_ZERO (&read_fds);
   FD_SET (sock, &read_fds);
-#endif
 
   fdwidth = 32;
-#ifdef DECTCP
-  if (timeout == 0L) {
-    /* infinite timeout */
-    result = select (fdwidth, (int *) &read_fds, (int *) NULL, (int *) NULL, (struct timeval *)NULL);
-  } else {
-    result = select (fdwidth, (int *) &read_fds, (int *) NULL, (int *) NULL, &delay);
-  }
-#else
   if (timeout == 0L) {
     /* infinite timeout */
     result = select (fdwidth, &read_fds, (fd_set *) NULL, (fd_set *) NULL, (struct timeval *)NULL);
   } else {
     result = select (fdwidth, &read_fds, (fd_set *) NULL, (fd_set *) NULL, &delay);
   }
-#endif /* DECTCP */
 
   if (result < 0) {
-#ifdef PCNFS
-    if (ERRNO == EINTR)
-        int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
     (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoTimedSocketRead]\n -> select failed errno=[%d]\n", ERRNO);
     return (TIMEDSTATUSfailure);
   }
 
-#ifdef PCTCP  /* Loop around instead of infinite timeout. Poll CTRL-C key */
-  (void) kbhit();
- } while (timeout_looping && (result == 0));
-#endif
 
   if (result == 0) {
     return (TIMEDSTATUSnodata);
   } else {
     data_read = recv (sock, (char *)buffer, to_read, 0);
     if (data_read < 0) {
-#ifdef PCNFS
-      if (ERRNO == EINTR)
-          int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
       (void) sprintf (lnkops_errorstring, " : module [tops.c], function [DoTimedSocketRead]\n -> recv failed, errno=[%d]\n", ERRNO);
       return (TIMEDSTATUSfailure);
     }
@@ -474,7 +295,6 @@ fd_set read_fds;
     }
   }
 }
-#endif /* WINTCP */
 
 /* HandleMessage ()
      requires :  OPSMIN_RESPONSEMESSAGESIZE bytes of message read into
@@ -1169,11 +989,7 @@ long int proc_id;
 static unsigned char TestResponseAvailable (sock)
 int sock;
 {
-#ifdef DECTCP
-  int read_fds;
-#else  /* DECTCP */
   fd_set read_fds;
-#endif /* DECTCP */
 
   int fdwidth, result;
   struct timeval wait;
@@ -1181,24 +997,12 @@ int sock;
   wait.tv_sec = 0;
   wait.tv_usec = 10; /* check for 10microseconds */
   
-#ifdef DECTCP
-  read_fds = (1 << sock);
-#else
   FD_ZERO (&read_fds);
   FD_SET (sock, &read_fds);
-#endif
   
   fdwidth = 32;
-#ifdef DECTCP
-  result = select (fdwidth, (int *)&read_fds, (int *) NULL, (int *) NULL, &wait);
-#else
   result = select (fdwidth, &read_fds, (fd_set *) NULL, (fd_set *) NULL, &wait);
-#endif /* DECTCP */
   if (result < 0) {
-#ifdef PCNFS
-    if (ERRNO == EINTR)
-        int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
     (void) sprintf(lnkops_errorstring, " : module [tops.c], function [TestResponseAvailable]\n -> select failed");
     return (STATUS_COMMS_FATAL);
   }
@@ -1258,49 +1062,26 @@ char *link_name;
     return (STATUS_BAD_COMMS_MODE);
   }
   
-#ifdef DECTCP
-  ops_server.sin_port = htons(LINKOPS_PORT);
-  InfoMessage ( fprintf (stderr, "Info        : using port [%d] as no services database under Ultrix\n", LINKOPS_PORT) );
-#else
   if ((servptr = getservbyname (SERVICENAME, SERVICEPROTOCOL)) == NULL) {
     (void) sprintf(lnkops_errorstring, " : linkops service is not defined in the network service database\n");
     return (STATUS_COMMS_FATAL);
   }
   ops_server.sin_port = servptr -> s_port;
-#endif /* DECTCP */
   
   /* initialise sp request queue */
   TOPSbuffer_depth = buffer_depth;
   TOPSnum_spbuffered = 0;
   TOPSspqueueptr = NULL;
   
-#ifdef REDUNDANT
-  This was the old method of setting up size of send/receive buffers
-  under PC-NFS. Version 2.0 conforms to the standard method.
-  {
-    int parameters[5];
-    parameters[0] = 1024; /* send mms */
-    parameters[1] = 1024; /* recv mms */
-    parameters[2] = 9216; /* send window */
-    parameters[3] = 9216; /* recv window */
-    parameters[4] = 0;    /* ack delay */
-    setpparm (IPPROTO_TCP, (char *)&parameters[0]);
-  }
-#endif /* REDUNDANT */
   /* create an Internet, stream, IP socket */
   sock = socket(AF_INET, SOCK_STREAM, 0);
   if (sock < 0) {
-#ifdef PCNFS
-    if (ERRNO == EINTR)
-        int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
     (void) sprintf (lnkops_errorstring, " : module [tops.c], function [TOPS_Open]\n -> socket failed\n");
     return (STATUS_COMMS_FATAL);
   }
   
   /* set size of send & receive buffers */
-#ifndef DECTCP
-  {
+  /*{
     int ReceiveSize = FRAG_SIZE + 1024;
     int SendSize = FRAG_SIZE + 1024;        
     
@@ -1313,15 +1094,13 @@ char *link_name;
       return (STATUS_COMMS_FATAL);
     }
     
-  }
+  }*/
   
 #ifdef NODELAY
   {
-    struct protoent *pp;    
     int NoDelay = 1;
                             
-    pp = getprotobyname ("tcp");
-    if (setsockopt (sock, pp->p_proto, TCP_NODELAY, (char *)&NoDelay, sizeof(NoDelay)) != 0) {
+    if (setsockopt (sock, IPPROTO_TCP, TCP_NODELAY, (char *)&NoDelay, sizeof(NoDelay)) != 0) {
       (void) sprintf (lnkops_errorstring, " : module [tops.c], function [TOPS_Open]\n -> setsockopt(NODELAY) failed\n");
       return (STATUS_COMMS_FATAL);
     }
@@ -1329,8 +1108,6 @@ char *link_name;
   }
 #endif /* NODELAY */
 
-#endif /* not DECTCP */
-  
   /**
   *** connect socket to remote machine 
   **/
@@ -1370,10 +1147,6 @@ char *link_name;
      full 3 minutes */
   result = connect (sock, (struct sockaddr *) &ops_server, sizeof (ops_server) );
   if (result < 0) {
-#ifdef PCNFS
-    if (ERRNO == EINTR)
-        int86(0x1b,&dos_regs,&dos_regs); /* Generate a 'break' interrupt */
-#endif
     switch (ERRNO) {
       case ETIMEDOUT:
       case ENETUNREACH:

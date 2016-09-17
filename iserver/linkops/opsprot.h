@@ -36,9 +36,6 @@
 #define SERVICENAME "linkops"
 #define SERVICEPROTOCOL "tcp"
 
-/* port number used for Ultrix Connect version (no services database) */
-#define LINKOPS_PORT 4047
-
 /* service message string */
 #define SERVICE_OPSOPEN "inmos.com(tcplink-linkops-01.00)"
 #define VERYWRONG_STRING "-\n"
