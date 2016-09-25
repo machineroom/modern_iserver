@@ -41,7 +41,9 @@
 #define VERYWRONG_STRING "-\n"
 
 /* maximum number of bytes in a linkops packet (fragmentation size) */
-#define FRAG_SIZE (8192)
+//#define FRAG_SIZE (8192)
+//james wilson altered for W5100 arduino interface (TCP frag not suported)
+#define FRAG_SIZE (1024)
 
 /* maximum amount of data in a linkops message */
 #define OPSMAXPACKET 8192
