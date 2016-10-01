@@ -477,7 +477,7 @@ unsigned char *buffer;
           break;
           
         case OREPLY_Peek32:
-          extra_to_read = (OPSPeek32ReplyBasicSize - bytes_read);
+          extra_to_read = (OPSPeek32ReplyBasicSize - bytes_read);   //e.g. processor_id
           break;
         
         default:
@@ -499,6 +499,7 @@ unsigned char *buffer;
         return (STATUS_COMMS_FATAL);
       }
       /* read "data" field into users buffer */
+      DebugMessage (fprintf (stderr, "Debug       : reading %d bytes from socket\n", extra_to_read) );
       result = DoSocketRead (sock, extra_to_read, (unsigned char *)&buffer[0]);
       if (result != STATUS_NOERROR) {
         (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [GetSyncResponse]\n");

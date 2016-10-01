@@ -16,5 +16,5 @@
 |sg2     |T      |localhost       |sg2 |tsp |||Host link 1|
 |sg3     |T      |localhost       |sg3 |tsp |||Host link 2|
 |sg4     |T      |localhost       |sg4 |tsp |||Host link 3|
-|eth     |T      |192.168.1.118   |eth |tcp |||net link|
+|eth     |T      |192.168.1.124   |eth |tcp |||net link|
 
