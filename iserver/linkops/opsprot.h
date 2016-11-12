@@ -46,7 +46,9 @@
 #define FRAG_SIZE (1024)
 
 /* maximum amount of data in a linkops message */
-#define OPSMAXPACKET 8192
+//#define OPSMAXPACKET 8192
+//james wilson altered for W5100 arduino interface (TCP frag not suported)
+#define OPSMAXPACKET 1024
 
 /* maximum size of linkops message fields (excluding data) */
 #define OPSMAXOVERHEADS 13

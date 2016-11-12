@@ -316,16 +316,17 @@ int packet_size;
   
    /* read rest of message response */
    extra_to_read = (packet_size - OPSMIN_RESPONSEMESSAGESIZE);
+   DebugMessage (fprintf (stderr, "Debug       : reading %d data bytes from sock\n", extra_to_read) );
    result = DoSocketRead (sock, extra_to_read, (unsigned char *)&response_buffer[OPSMIN_RESPONSEMESSAGESIZE]);
    if (result != STATUS_NOERROR) {
      (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called by [HandleMessage]\n");
      return (result);
    }      
    if (response_buffer[OEVENTMESSAGE_fatal] == ((unsigned char) 0)) {
-#ifdef GIVENONFATALMESSAGES /* linkops server uses them for keepalives ! */
+//#ifdef GIVENONFATALMESSAGES /* linkops server uses them for keepalives ! */
      (void) fprintf(stderr, "\n>>>>Message from linkops server<<<<\n[%s]\n", (char *)&response_buffer[OEVENTMESSAGE_string]);
      fflush (stderr);
-#endif
+//#endif
      return (STATUS_NOERROR);
    } else {
      (void) fprintf(stderr, "\n>>>>Fatal message from linkops server<<<<\n[%s]\n", (char *)&response_buffer[OEVENTMESSAGE_string]);
@@ -727,6 +728,7 @@ int max_goes;
         
         
       case OEVENT_Message:
+        DebugMessage (fprintf (stderr, "Debug       : got Message event\n") );
         result = HandleMessage (sock, packet_size);
         if (result != STATUS_NOERROR) {
           (void) sprintf(&lnkops_errorstring[strlen(lnkops_errorstring)], "called [GetAsyncRequest]\n");
