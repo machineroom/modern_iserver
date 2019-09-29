@@ -29,6 +29,18 @@ extern int TestError(int LinkId);
 
 /* Now all the external declarations */
 
+#ifdef LNKC011
+extern int C011OpenLink(const char *Name);
+extern int C011CloseLink(int LinkId);
+extern int C011ReadLink(int LinkId, char *Buffer, int Count, int Timeout);
+extern int C011WriteLink(int LinkId, char *Buffer, int Count, int Timeout);
+extern int C011ResetLink(int LinkId);
+extern int C011AnalyseLink(int LinkId);
+extern int C011TestError(int LinkId);
+extern int C011TestRead(int LinkId);
+extern int C011TestWrite(int LinkId);
+#endif /* LNKC011 */
+
 #ifdef LNKb004
 extern int B004OpenLink(const char *Name);
 extern int B004CloseLink(int LinkId);

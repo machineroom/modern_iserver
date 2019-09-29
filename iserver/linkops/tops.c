@@ -53,6 +53,7 @@ static char *CMS_Id = "PRODUCT:ITEM.VARIANT-TYPE;0(DATE)";
 #ifndef NOCOMMS
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef LINUX
 #include <errno.h>

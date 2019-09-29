@@ -42,5 +42,6 @@ char *LMethodNames[] = {
   "tcp",       /* tcp  */
   "b017",      /* b017 */
   "tsp",        /* TSP */
-  "td"
+  "td",
+  "c011"        /* rPI/C011 */
 };

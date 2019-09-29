@@ -215,6 +215,19 @@ char *name;
   testread_vector[TSP].function    = TSPTestRead;
   testwrite_vector[TSP].function   = TSPTestWrite;
 #endif
+
+#ifdef LNKC011
+  method_isavailable[C011] = true;
+  openlink_vector[C011].function    = C011OpenLink;
+  closelink_vector[C011].function   = C011CloseLink;
+  readlink_vector[C011].function    = C011ReadLink;
+  writelink_vector[C011].function   = C011WriteLink;
+  resetlink_vector[C011].function   = C011ResetLink;
+  analyselink_vector[C011].function = C011AnalyseLink;
+  testerror_vector[C011].function   = C011TestError;
+  testread_vector[C011].function    = C011TestRead;
+  testwrite_vector[C011].function   = C011TestWrite;
+#endif
      
 #ifdef LNKtcp
   method_isavailable[TCP_LINKOPS] = true;

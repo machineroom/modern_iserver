@@ -19,7 +19,7 @@
 -----------------------------------------------------------------------------*/
 
 /* number of supported methods */
-#define MAX_LMETHODS 16
+#define MAX_LMETHODS 17
 
 /* define lmethod constants, values up to 127 reserved for INMOS */
 #define HW_X      0
@@ -38,4 +38,5 @@
 #define B017      13  
 #define TSP       14  
 #define TD	  15
+#define C011	  16
 
