@@ -1,0 +1,31 @@
+cd ~/WCS/opt/wcsserver/hwr-diags/ver40033
+export IPE=$(pwd)
+export ITERM=~/WCS/opt/wcsserver/iterms/ansi.itm
+export ICONDB=~/transtech/lib/tsp.db
+export TRANSPUTER=sg1
+export IBIN=~/WCS/opt/wcsserver/ibin
+
+export PATH=$PATH:~/WCS/opt/wcsserver/bin
+export PATH=$PATH:~/transtech/iserver/iserver
+
+export LD_LIBRARY_PATH=~/transtech/tsp
+export IPE=$cwd
+
+iserver -sr
+iserver -sa
+sleep 1
+iserver -sc $IBIN/netswon.btl -sr -si
+
+#iskip 1 -r 
+#iserver -se -sr -ss -sc /home/james/WCS/opt/wcsserver/ibin/iskip.btl 1 -r 
+iserver -sr -ss -sc /home/james/WCS/opt/wcsserver/ibin/iskip.btl 1 -r 
+
+sleep 5
+iserver -si -sc pthru2.btl
+#iserver -se -sb hcroot.btl -l1 $argv
+iserver -sb hcroot.btl -l1 $argv
+
+
+
+iserver -sr; iserver -sc $IBIN/netswon.btl -sr -si; iserver -sr -ss -sc /home/james/WCS/opt/wcsserver/ibin/iskip.btl 1 -r; iserver -si -sc pthru2.btl; 
+
