@@ -33,52 +33,57 @@ C011ReadLink(LINK LinkId, char *Buffer, unsigned Count, int Timeout)
 
 	/* Read into buffer */
 	result = c011_read_bytes( Buffer, Count, Timeout );
-    return result;
+	if (result >= 0) {
+	    return result;
+	} else {
+	    return ER_LINK_CANT;
+	}
 }
-
 
 int
 C011WriteLink(LINK LinkId, char *Buffer, unsigned Count, int Timeout)
 {
 	int result;
-	c011_write_bytes (Buffer, Count);
-
-	return Count;
+	result = c011_write_bytes (Buffer, Count, Timeout);
+	if (result >= 0) {
+	    return result;
+	} else {
+	    return ER_LINK_CANT;
+	}
 }
 
 int
 C011ResetLink(LINK LinkId)
 {
     c011_reset();
-	return 1;
+    return SUCCEEDED;
 }
 
 
 int
 C011AnalyseLink(LINK LinkId)
 {
-	return 1;
+    c011_analyse ();
+    return SUCCEEDED;
 }
 
 
 int
 C011TestError(LINK LinkId)
 {
-    return 0;
+    return ER_LINK_CANT;
 }
 
 int
 C011TestRead(LINK LinkId)
 {
-	/* Not implemented */
-	return (ER_LINK_CANT);
+    return ((c011_read_input_status() & 0x01) == 0x01);
 }
 
 int
 C011TestWrite(LINK LinkId)
 {
-	/* Not implemented */
-	return (ER_LINK_CANT);
+    return ((c011_read_output_status() & 0x01) == 0x01);
 }
 
 
