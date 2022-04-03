@@ -1,0 +1,79 @@
+#  --------------------------------------------------
+#
+#    Sun SunView ITERM data file
+#    Support for idebug and isim
+#
+#    V1.0 - 17 May 89
+#    V1.1 - 11 December 89          (NH)  Updated idebug and isim support
+#
+#  --------------------------------------------------
+
+host section
+1:2.                          version
+2:80,34.                      screen size (default SunView size)
+end of host section
+
+screen section
+#                                   DEBUGGER       SIMULATOR
+1:27,91,49,65.                                     cursor up
+2:27,91,49,66.                                     cursor down
+3:27,91,49,68.                      cursor left    cursor left
+4:27,91,49,67.                                     cursor right
+5:27,91,-22,1,59,-12,1,72.          goto x y       goto x y
+8:27,91,75.                         clear to eol   clear to eol
+9:27,91,74.                         clear to eos   clear to eos
+10:27,91,49,76.                     insert line    insert line
+11:27,91,49,77.                     delete line    delete line
+12:7.                               bell           bell
+13:27,91,50,74.                     clear screen   clear screen
+end of screen section
+
+keyboard section
+#                      Sun  key     DEBUGGER      SIMULATOR
+2:127.                 # DELETE     delete char       
+2:8.                   # BACKSPACE  delete char       
+6:27,91,65.            # R8         cursor up      cursor up
+7:27,91,66.            # R14        cursor down    cursor down
+8:27,91,68.            # R10        cursor left    cursor left
+9:27,91,67.            # R12        cursor right   cursor right
+12:21.                 # Crtl-U     delete line
+14:27,91,50,49,52,122. # R7         start of line  start of line
+15:27,91,50,49,54,122. # R9         end of line    end of line
+18:27,91,50,50,54,122. # F3         line up
+19:27,91,50,50,55,122. # F4         line down
+20:27,91,50,49,49,122. # R4         page up        page up
+21:27,91,50,49,51,122. # R6         page down      page down
+26:27,91,50,48,56,122. # R1         enter file
+27:27,91,50,49,48,122. # R3         exit file
+28:27,91,50,48,57,122. # R2         refresh        refresh
+28:12.                 # Ctrl-L     refresh        refresh
+29:27,91,50,51,50,122. # F9         change file
+31:27,91,49,57,51,122. # L2         finish
+34:27,91,50,49,56,122. # R11        help           help
+36:27,91,50,51,48,122. # F7         get address
+39:27,91,50,49,50,122. # R5         goto line
+40:27,48.              # esc 0      backtrace
+41:27,49.              # esc 1      inspect
+42:27,50.              # esc 2      channel
+43:27,51.              # esc 3      top
+44:27,52.              # esc 4      retrace
+45:27,53.              # esc 5      relocate
+46:27,54.              # esc 6      info
+47:27,55.              # esc 7      modify
+48:27,56.              # esc 8      resume
+49:27,57.              # esc 9      monitor
+50:27,91,50,50,48,122. # R13        word left
+51:27,91,50,50,50,122. # R15        word right
+55:27,91,49,57,52,122. # L3         top of file
+56:27,91,49,57,53,122. # L4         end of file
+62:27,91,50,50,56,122. # F5         toggle hex
+65:27,91,50,50,53,122. # F2         continue from
+66:27,91,50,50,57,122. # F6         toggle break
+67:27,91,50,51,49,122. # F8         search
+end of keyboard section
+
+#  idebug key that isn't really part of iterm but its here all the same !
+# 
+#              INTERRUPT      CTRL A    --  IDEBUG
+
+#   THAT'S ALL FOLKS

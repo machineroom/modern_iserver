@@ -1,198 +1,302 @@
+
+/* MUST run code as root since BRCM timer registers used */
+
 #include <bcm2835.h>
+#include <time.h>
 #include "pins.h"
 #include "c011.h"
+#include <stdio.h>
 
-//all the C011 timings are <1uS (60ns top)
-//TODO use nanosleep
-#define TRWVCSL (0)
-#define TCSLCSH (1) //60ns
-#define TCSHCSL (1) //50ns
-#define TRHRL (1)
-#define TRSVCSL (0)
-#define TCSLDrV (1) //50ns
 
-static void set_control_output_pins(void) {
+#define TCSLCSH (50)
+#define TCSHCSL (50)
+#define TCSLDrV (40)
+
+static uint32_t bits=0;
+static volatile uint32_t *gpio_clr;
+static volatile uint32_t *gpio_set;
+static volatile uint32_t *gpio_fsel;
+static volatile uint32_t *gpio_lev;
+
+typedef enum {
+    UNDEFINED,
+    OUTPUT,
+    INPUT
+} DATA_PINS_MODE;
+
+DATA_PINS_MODE data_pins_mode = UNDEFINED;
+
+static uint64_t total_reads=0;
+static uint64_t total_read_waits=0;
+static uint64_t total_read_timeouts=0;
+static uint64_t total_read_success=0;
+
+static uint64_t total_writes=0;
+static uint64_t total_write_waits=0;
+static uint64_t total_write_timeouts=0;
+static uint64_t total_write_success=0;
+
+void c011_dump_stats(const char *title) {
+    printf ("C011 interfaces stats for '%s'\n",title);
+    printf ("\ttotal reads %lu\n",total_reads);
+    printf ("\ttotal read waits %lu\n",total_read_waits);
+    printf ("\ttotal read timouts %lu\n",total_read_timeouts);
+    printf ("\ttotal read successes %lu\n",total_read_success);
+    printf ("\ttotal writes %lu\n",total_writes);
+    printf ("\ttotal write waits %lu\n",total_write_waits);
+    printf ("\ttotal write timouts %lu\n",total_write_timeouts);
+    printf ("\ttotal write successes %lu\n",total_write_success);
+    total_reads=0;
+    total_read_waits=0;
+    total_read_timeouts=0;
+    total_read_success=0;
+    total_writes=0;
+    total_write_waits=0;
+    total_write_timeouts=0;
+    total_write_success=0;
+}
+
+/**
+ * @brief sleep for specified ns (or longer). 
+ * 
+ * @param ns 
+ */
+static inline void sleep_ns(int ns) {
+    //scope timing with rpi4 shows this is good enough for the small sleeps required by C011
+    for (int i=0; i < ns; i++) {
+        asm ("nop");
+    }
+    //bcm2835_delayMicroseconds(1);
+}
+
+static void set_control_pins(void) {
     bcm2835_gpio_fsel(RS0, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(RS1, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(RESET, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(CS, BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(RW, BCM2835_GPIO_FSEL_OUTP);
+    bcm2835_gpio_fsel(BYTE, BCM2835_GPIO_FSEL_OUTP);
+
+    bcm2835_gpio_fsel(IN_INT, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_fsel(OUT_INT, BCM2835_GPIO_FSEL_INPT);
+    bcm2835_gpio_set_pud(IN_INT, BCM2835_GPIO_PUD_DOWN);
+    bcm2835_gpio_set_pud(OUT_INT, BCM2835_GPIO_PUD_DOWN);
 }
 
-static void set_data_output_pins(void) {
-    bcm2835_gpio_fsel(D0, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D1, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D2, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D3, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D4, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D5, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D6, BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(D7, BCM2835_GPIO_FSEL_OUTP);
+static inline void set_data_output_pins(void) {
+    if (data_pins_mode != OUTPUT) {
+        //bits 9-0 output (001)
+        //%00001001001001001001001001001001
+        //    0   9   2   4   9   2   4   9
+        bcm2835_peri_write_nb (gpio_fsel, 0x09249249);
+        data_pins_mode = OUTPUT;
+    }
 }
 
-static void set_data_input_pins(void) {
-    bcm2835_gpio_fsel(D0, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D1, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D2, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D3, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D4, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D5, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D6, BCM2835_GPIO_FSEL_INPT);
-    bcm2835_gpio_fsel(D7, BCM2835_GPIO_FSEL_INPT);
+static inline void set_data_input_pins(void) {
+    if (data_pins_mode != INPUT) {
+        //bits 9-0 input (000)
+        bcm2835_peri_write_nb (gpio_fsel, 0);
+        data_pins_mode = INPUT;
+    }
+}
+
+//testing with scope shows set_gpio_bit takes ~6ns
+static inline void set_gpio_bit(uint8_t pin, uint8_t on) {
+    if (on) {
+        bits |= 1<<pin;
+    } else {
+        bits &= ~(1<<pin);
+    }
+}
+
+//testing with scope shows gpio_commit takes ~150ns (rpi4 -O3)
+// bcm2835_peri_write ~75ns
+// bcm2835_peri_write_nb ~5ns
+static inline void gpio_commit(void) {
+    bcm2835_peri_write_nb (gpio_clr, ~bits);
+    bcm2835_peri_write_nb (gpio_set, bits);
+}
+
+//write byte to whatever register has been setup previously
+static void c011_put_byte(uint8_t byte) {
+    uint32_t word = (uint32_t)byte;
+    //clear bits 2-9 and OR in our byte
+    //1111 1111 1111 1111 1111 1100 0000 0011
+    bits &= 0xFFFFFC03;
+    word <<= 2;
+    bits |= word;
+    // commit the byte to the data pins before asserting CS
+    gpio_commit();
+    //CS=0
+    set_gpio_bit(CS, LOW);
+    gpio_commit();
+    sleep_ns (TCSLCSH);
+    //CS=1
+    set_gpio_bit(CS, HIGH);
+    gpio_commit();
+    sleep_ns (TCSHCSL);
+}
+
+static void c011_enable_in_int(void) {
+    set_data_output_pins();
+    set_gpio_bit (RS1,1);
+    set_gpio_bit (RS0,0);
+    set_gpio_bit (RW,0);
+    gpio_commit();
+    c011_put_byte (0x02); // set int enable bit
+}
+
+static void c011_enable_out_int(void) {
+    set_data_output_pins();
+    set_gpio_bit (RS1,1);
+    set_gpio_bit (RS0,1);
+    set_gpio_bit (RW,0);
+    gpio_commit();
+    c011_put_byte (0x02); // set int enable bit
 }
         
 void c011_init(void) {
     bcm2835_init();
-    set_control_output_pins();
-    bcm2835_gpio_write(ANALYSE, LOW);
-    c011_reset();
+    gpio_clr = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPCLR0/4;
+    gpio_set = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPSET0/4;
+    gpio_fsel = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPFSEL0/4;
+    gpio_lev = bcm2835_regbase(BCM2835_REGBASE_GPIO) + BCM2835_GPLEV0/4;
+    set_control_pins();
+    set_gpio_bit(CS, HIGH);
+
+    //set_gpio_bit(ANALYSE, LOW);
+    gpio_commit();
+
 }
 
 void c011_reset(void) {
-    bcm2835_gpio_write(ANALYSE, LOW);
     //TN29 states "Recommended pulse width is 5 ms, with a delay of 5 ms before sending anything down a link."
-    bcm2835_gpio_write(RESET, LOW);
-    bcm2835_gpio_write(RESET, HIGH);
+    set_gpio_bit(RESET, LOW);
+    gpio_commit();
+    set_gpio_bit(RESET, HIGH);
+    gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
-    bcm2835_gpio_write(RESET, LOW);
+    set_gpio_bit(RESET, LOW);
+    gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
+    //The whitecross HSL takes some time to cascade reset
+    //bcm2835_delay(1500);
+    c011_enable_in_int();
+    c011_enable_out_int();
+}
+
+void c011_set_byte_mode(void) {
+    set_gpio_bit (BYTE,HIGH);
+    gpio_commit();
+    bcm2835_delay(1500);
+}
+
+void c011_clear_byte_mode(void) {
+    set_gpio_bit (BYTE,LOW);
+    gpio_commit();
+    //The whitecross HSL takes some time to cascade
+    bcm2835_delay(1500);
 }
 
 void c011_analyse(void) {
-    bcm2835_gpio_write(ANALYSE, LOW);
+    /*set_gpio_bit(ANALYSE, LOW);
+    gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
-    bcm2835_gpio_write(ANALYSE, HIGH);
+    set_gpio_bit(ANALYSE, HIGH);
+    gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
-    bcm2835_gpio_write(RESET, HIGH);
+    set_gpio_bit(RESET, HIGH);
+    gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
-    bcm2835_gpio_write(RESET, LOW);
+    set_gpio_bit(RESET, LOW);
+    gpio_commit();
     bcm2835_delayMicroseconds (5*1000);
-    bcm2835_gpio_write(ANALYSE, LOW);
-    bcm2835_delayMicroseconds (5*1000);
+    set_gpio_bit(ANALYSE, LOW);
+    gpio_commit();
+    bcm2835_delayMicroseconds (5*1000);*/
 }
 
-void c011_enable_out_int(void) {
-    set_data_output_pins();
-    bcm2835_gpio_write_mask (1<<RS1 | 1<<RS0 | 0<<RW | 1<<CS,
-                             1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS);
-    bcm2835_gpio_write_mask (1<<D1,
-                             1<<D7 | 1<<D6 | 1<<D5 | 1<<D4 | 1<<D3 | 1<<D2 | 1<<D1 | 1<<D0);
-
-    bcm2835_gpio_write(CS, LOW);
-    bcm2835_delayMicroseconds (TCSLCSH);
-    bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
-}
-
-void c011_enable_in_int(void) {
-    set_data_output_pins();
-    bcm2835_gpio_write_mask (1<<RS1 | 0<<RS0 | 0<<RW | 1<<CS,
-                             1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS);
-    bcm2835_gpio_write_mask (1<<D1,
-                             1<<D7 | 1<<D6 | 1<<D5 | 1<<D4 | 1<<D3 | 1<<D2 | 1<<D1 | 1<<D0);
-    bcm2835_gpio_write(CS, LOW);
-    bcm2835_delayMicroseconds (TCSLCSH);
-    bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
-}
-
+/**
+ * @brief write a single byte to the C011
+ * 
+ * @param byte the byte to write
+ * @param timeout timeout in ms
+ * @return int -1 on timeout or 0 on success
+ */
 int c011_write_byte(uint8_t byte, uint32_t timeout) {
     //wait for output ready
-    while ((c011_read_output_status() & 0x01) != 0x01 && timeout>0) {
-        bcm2835_delayMicroseconds(1000);
-        timeout--;
+    uint32_t word;
+    total_writes++;
+    // wait for OutputInt pin to go high (thereby indicating ready to write)
+    uint64_t timeout_us = timeout*1000;    // 1000us=1ms
+    uint64_t start;
+    start = bcm2835_st_read();
+    while (((bcm2835_peri_read(gpio_lev) & (1<<OUT_INT)) == 0)) {
+        if (bcm2835_st_read() - start > timeout_us) {
+            total_write_timeouts++;
+            return -1;
+        }
+        total_write_waits++;
     }
-    if (timeout == 0) {
-        return -1;
-    }
-    //RS1=0, RS0=1
-    //RW=0
-    //CS=1
     set_data_output_pins();
-    bcm2835_gpio_write_mask (0<<RS1 | 1<<RS0 | 0<<RW | 1<<CS,
-                             1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS);
-    //D0-D7
-    uint8_t d7,d6,d5,d4,d3,d2,d1,d0;
-    d7=(byte&0x80) >> 7;
-    d6=(byte&0x40) >> 6;
-    d5=(byte&0x20) >> 5;
-    d4=(byte&0x10) >> 4;
-    d3=(byte&0x08) >> 3;
-    d2=(byte&0x04) >> 2;
-    d1=(byte&0x02) >> 1;
-    d0=(byte&0x01) >> 0;
-    bcm2835_gpio_write_mask (d7<<D7 | d6<<D6 | d5<<D5 | d4<<D4 | d3<<D3 | d2<<D2 | d1<<D1 | d0<<D0,
-                             1<<D7 | 1<<D6 | 1<<D5 | 1<<D4 | 1<<D3 | 1<<D2 | 1<<D1 | 1<<D0);
-    //CS=0
-    bcm2835_gpio_write(CS, LOW);
-    bcm2835_delayMicroseconds (TCSLCSH);
-    //CS=1
-    bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
+    set_gpio_bit (RS1,0);
+    set_gpio_bit (RS0,1);
+    set_gpio_bit (RW,0);
+    gpio_commit();
+    c011_put_byte(byte);
+    total_write_success++;
     return 0;
 }
 
 static uint8_t read_c011(void) {
-    uint8_t d7,d6,d5,d4,d3,d2,d1,d0,byte;
     set_data_input_pins();
-    bcm2835_gpio_write(CS, LOW);
+    set_gpio_bit(CS, LOW);
+    gpio_commit();
     //must allow time for data valid after !CS
-    bcm2835_delayMicroseconds (TCSLDrV);
-    d7=bcm2835_gpio_lev(D7);
-    d6=bcm2835_gpio_lev(D6);
-    d5=bcm2835_gpio_lev(D5);
-    d4=bcm2835_gpio_lev(D4);
-    d3=bcm2835_gpio_lev(D3);
-    d2=bcm2835_gpio_lev(D2);
-    d1=bcm2835_gpio_lev(D1);
-    d0=bcm2835_gpio_lev(D0);
-    byte = d7;
-    byte <<= 1;
-    byte |= d6;
-    byte <<= 1;
-    byte |= d5;
-    byte <<= 1;
-    byte |= d4;
-    byte <<= 1;
-    byte |= d3;
-    byte <<= 1;
-    byte |= d2;
-    byte <<= 1;
-    byte |= d1;
-    byte <<= 1;
-    byte |= d0;
-    bcm2835_gpio_write(CS, HIGH);
-    bcm2835_delayMicroseconds (TCSHCSL);
-    return byte;
-}
-
-uint8_t c011_read_input_status(void) {
+    sleep_ns (TCSLDrV);
+    uint32_t reg = bcm2835_peri_read (gpio_lev);
     uint8_t byte;
-    bcm2835_gpio_write_mask (1<<RS1 | 0<<RS0 | 1<<RW | 1<<CS,
-                             1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS);
-    byte = read_c011();
+    reg >>= 2;
+    byte = reg & 0xFF;
+    set_gpio_bit(CS, HIGH);
+    gpio_commit();
+    sleep_ns (TCSHCSL);
     return byte;
 }
 
-uint8_t c011_read_output_status(void) {
-    uint8_t byte;
-    bcm2835_gpio_write_mask (1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS,
-                             1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS);
-    byte = read_c011();
-    return byte;
-}
-
+/**
+ * @brief read a single byte from the C011 link
+ * 
+ * @param byte 
+ * @param timeout timeout in ms (or 0 blocking)
+ * @return int -1 on timeout or 0 on success
+ */
 int c011_read_byte(uint8_t *byte, uint32_t timeout) {
-    while ((c011_read_input_status() & 0x01) == 0x00 && timeout>0) {
-        bcm2835_delayMicroseconds(1000);
-        timeout--;
+    total_reads++;
+    // wait for InputInt bit to go high
+    if (timeout==0) {
+        while ((bcm2835_peri_read(gpio_lev) & (1<<IN_INT)) == 0) {
+            total_read_waits++;
+        }
+    } else {
+        uint64_t timeout_us = timeout*1000;    // 1000us=1ms
+        uint64_t start;
+        start = bcm2835_st_read();
+        while (((bcm2835_peri_read(gpio_lev) & (1<<IN_INT)) == 0)) {
+            if (bcm2835_st_read() - start > timeout_us) {
+                total_read_timeouts++;
+                return -1;
+            }
+            total_read_waits++;
+        }
     }
-    if (timeout == 0) {
-        return -1;
-    }
-    bcm2835_gpio_write_mask (0<<RS1 | 0<<RS0 | 1<<RW | 1<<CS,
-                             1<<RS1 | 1<<RS0 | 1<<RW | 1<<CS);
+    set_gpio_bit (RS1,0);
+    set_gpio_bit (RS0,0);
+    set_gpio_bit (RW,1);
+    gpio_commit();
     *byte = read_c011();
+    total_read_success++;
     return 0;
 }
 
@@ -218,3 +322,22 @@ uint32_t c011_read_bytes (uint8_t *bytes, uint32_t num, uint32_t timeout) {
     return i;
 }
 
+uint8_t c011_read_input_status(void) {
+    uint8_t byte;
+    set_gpio_bit (RS1,1);
+    set_gpio_bit (RS0,0);
+    set_gpio_bit (RW,1);
+    gpio_commit();
+    byte = read_c011();
+    return byte;
+}
+
+uint8_t c011_read_output_status(void) {
+    uint8_t byte;
+    set_gpio_bit (RS1,1);
+    set_gpio_bit (RS0,1);
+    set_gpio_bit (RW,1);
+    gpio_commit();
+    byte = read_c011();
+    return byte;
+}

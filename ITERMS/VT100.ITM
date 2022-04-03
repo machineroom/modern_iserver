@@ -1,0 +1,78 @@
+#  --------------------------------------------------
+#
+#    VAX VT100 ITERM data file (VT100 in application mode)
+#    Support for idebug and isim
+#
+#    V1.0 - 7 February 89
+#    V1.1 - 10 July 90          (NH)  Updated idebug and isim support
+#
+#  --------------------------------------------------
+
+host section
+1:2.                          version
+2:80,24.                      screen size
+end of host section
+
+screen section
+#                             DEBUGGER       SIMULATOR
+1:27,91,65.                                  cursor up
+2:27,91,66.                                  cursor down
+3:27,91,68.                   cursor left    cursor left
+4:27,91,67.                                  cursor right
+5:27,91,-22,1,59,-12,1,72.    goto x y       goto x y
+8:27,91,75.                   clear to eol   clear to eol
+9:27,91,74.                   clear to eos   clear to eos
+#10        ansi terminals do  insert line    insert line
+#11        not have these     delete line    delete line
+12:7.                         bell           bell
+13:27,91,50,74.               clear screen   clear screen
+end of screen section
+
+keyboard section
+#                       VT100 KEY        DEBUGGER       SIMULATOR
+2:127.                  # DELETE         delete char
+6:27,91,65.             # UP             cursor up      cursor up
+7:27,91,66.             # DOWN           cursor down    cursor down
+8:27,91,68.             # LEFT           cursor left    cursor left
+9:27,91,67.             # RIGHT          cursor right   cursor right
+12:21.                  # Crtl-U         delete line
+12:24.                  # Crtl-X         delete line
+14:27,79,116.           # KPAD 4         start of line  start of line
+15:27,79,108.           # KPAD , (comma) end of line    end of line
+18:27,79,113.           # KPAD 1         line up
+19:27,79,115.           # KPAD 3         line down
+20:27,79,112,27,79,113. # KPAD 0 KPAD 1  page up        page up
+21:27,79,112,27,79,115. # KPAD 0 KPAD 3  page down      page down
+26:27,79,119.           # KPAD 7         enter file
+27:27,79,109.           # KPAD 9         exit file
+28:27,79,112,27,79,112. # KPAD 0 KPAD 0  refresh        refresh
+29:27,79,112,27,79,119. # KPAD 0 KPAD 7  change file
+31:27,79,0,107.         # KPAD . (dot)   finish
+34:27,79,80.            # KPAD PF1       help
+36:27,79,120.           # KPAD 8         get address
+39:27,79,121.           # KPAD 9         goto line
+40:27,79,112,48.        # KPAD 0 0       backtrace
+41:27,79,112,49.        # KPAD 0 1       inspect
+42:27,79,112,50.        # KPAD 0 2       channel
+43:27,79,112,51.        # KPAD 0 3       top
+44:27,79,112,52.        # KPAD 0 4       retrace
+45:27,79,112,53.        # KPAD 0 5       relocate
+46:27,79,112,54.        # KPAD 0 6       info
+47:27,79,112,55.        # KPAD 0 7       modify
+48:27,79,112,56.        # KPAD 0 8       resume
+49:27,79,112,57.        # KPAD 0 9       monitor
+50:27,79,117.           # KPAD 5         word left
+51:27,79,118.           # KPAD 6         word right
+55:27,79,81.            # KPAD PF2       top of file
+56:27,79,82.            # KPAD PF3       end of file
+62:7.                   # Ctrl-H         toggle hex
+65:6.                   # Ctrl-F         continue from
+66:2.                   # Ctrl-B         toggle break
+67:5.                   # Ctrl-E         search
+end of keyboard section
+
+#  idebug key that isn't really part of iterm but its here all the same !
+# 
+#              INTERRUPT      CTRL A    --  IDEBUG
+
+#   THAT'S ALL FOLKS

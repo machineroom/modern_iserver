@@ -1,0 +1,92 @@
+#  --------------------------------------------------
+#
+#    IBM PC (ANSI) ITERM data file (derived from TDS3 ITERM)
+#    Support for idebug and isim
+#    IDEBUG version for ANSI.SYS driver:
+#    Special care needed on screen codes 6, 7, 9, 10, 11
+#
+#    V1.1 - 10 July 90          (NH)  Updated idebug and isim support
+#
+#  --------------------------------------------------
+
+host section
+1:2.                          version
+2:80,25.                      screen size
+end of host section
+
+#  screen control characters
+
+screen section
+#                             DEBUGGER       SIMULATOR
+1:27,91,65.                                  cursor up 
+2:27,91,66.                                  cursor down
+3:27,91,68.                   cursor left    cursor left
+4:27,91,67.                                  cursor right
+5:27,91,-22,1,59,-12,1,72.    goto x y       goto x y
+#6:27,91,64.                   insert char    insert char
+#7:27,91,80.                   delete char    delete char
+8:27,91,75.                   clear to eol   clear to eol
+9:27,91,74.                   clear to eos   clear to eos
+#10:27,91,76.                  insert line    insert line
+#11:27,91,77.                  delete line    delete line
+12:7.                         bell           bell
+13:27,91,50,74.               clear screen   clear screen
+end of screen section 
+
+keyboard section
+#              KEY            DEBUGGER       SIMULATOR
+#
+2:8.           # BACKSPACE    delete char
+6:0,72.        # UP           cursor up      cursor up
+7:0,80.        # DOWN         cursor down    cursor down
+8:0,75.        # LEFT         cursor left    cursor left
+9:0,77.        # RIGHT        cursor right   cursor right
+12:0,110.      # ALT F7       delete line
+12:21.         # CTRL U       delete line
+12:24.         # CTRL X       delete line
+14:0,65.       # F7           start of line  start of line
+15:0,66.       # F8           end of line    end of line
+18:0,67.       # F9           line up
+19:0,68.       # F10          line down
+20:0,112.      # ALT F9       page up        page up
+21:0,113.      # ALT F10      page down      page down
+26:0,71.       # NUM 7        enter file
+27:0,73.       # NUM 9        exit file
+28:27.         # ESC          refresh        refresh
+29:0,87.       # SHIFT F4     change file
+31:0,117.      # CTRL NUM 1   finish
+34:0,59.       # F1           help           help
+36:0,63.       # F5           get address
+39:0,64.       # F6           goto line
+40:0,129.      # ALT 0        backtrace 
+41:0,120.      # ALT 1        inspect 
+42:0,121.      # ALT 2        channel   
+43:0,122.      # ALT 3        top  
+44:0,123.      # ALT 4        retrace 
+45:0,124.      # ALT 5        relocate
+46:0,125.      # ALT 6        info  
+47:0,126.      # ALT 7        modify  
+48:0,127.      # ALT 8        resume 
+49:0,128.      # ALT 9        monitor 
+50:0,90.       # SHIFT F7     word left
+50:6.          # CTRL F       word left
+50:0,115.      # CTRL NUM 4   word left
+51:0,91.       # SHIFT F8     word right
+51:7.          # CTRL G       word right
+51:0,116.      # CTRL NUM 6   word right
+55:0,92.       # SHIFT F9     top of file
+55:20.         # CTRL T       top of file
+56:0,93.       # SHIFT F10    end of file
+56:2.          # CTRL B       end of file
+62:0,108.      # ALT F5       toggle hex
+65:0,105.      # ALT F2       continue from
+66:0,99.       # CTRL F6      toggle break
+67:0,88.       # SHIFT F5     search
+
+end of keyboard stuff
+
+#  idebug key that isn't really part of iterm but its here all the same !
+#
+#              INTERRUPT      CTRL A    --  IDEBUG
+
+#   THAT'S ALL FOLKS

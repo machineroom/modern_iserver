@@ -1,0 +1,12 @@
+# Sample connection database.
+# The device names and addresses supplied are the default names
+# and or addresses suggested in the installation section of the
+# board's manual. If you have used some other name or address, then
+# you will need to change this. Refer to the section on configuring
+# the Connection Database.
+#
+# The following resource allows access to a IMS B004 connected to the
+# host. The resource name is "B004" and the device is accessed
+# at address #150
+|B004    |T|localhost|#150|b004|||Description of board configuration|
+

@@ -1,0 +1,93 @@
+#  --------------------------------------------------
+#
+#    NEC PC ANSI ITERM data file (based on ansi.itm)
+#    Support for idebug and isim
+#
+#    V1.0 - 21 February 91      (NH)  Created
+#
+#  --------------------------------------------------
+
+host section
+1:2.                          version
+2:80,24.                      screen size
+end of host section
+
+screen section
+#                             DEBUGGER       SIMULATOR
+1:27,91,65.                                  cursor up
+2:27,91,66.                                  cursor down
+3:27,91,68.                   cursor left    cursor left
+4:27,91,67.                                  cursor right
+5:27,91,-22,1,59,-12,1,72.    goto x y       goto x y
+#6                            insert char    insert char
+#7                            delete char    delete char
+8:27,91,75.                   clear to eol   clear to eol
+9:27,91,74.                   clear to eos   clear to eos
+10:27,91,49,76.               insert line    insert line
+11:27,91,49,77.               delete line    delete line
+12:7.                         bell           bell
+13:27,91,50,74.               clear screen   clear screen
+end of screen section
+
+keyboard section
+#                       KEY                DEBUGGER       SIMULATOR
+#
+2:8.                    # BACKSPACE        del char
+6:11.                   # UP (CTRL-K)      cursor up      cursor up
+7:10.                   # DOWN (CTRL-J)    cursor down    cursor down
+8:27,76.                # ESC L            cursor left    cursor left
+8:27,108.               # ESC l            cursor left    cursor left
+9:12.                   # RIGHT (CTRL-L)   cursor right   cursor right
+12:27,69.               # ESC E            delete line
+12:27,101.              # ESC e            delete line
+14:1.                   # CTRL-A           start of line  start of line
+15:5.                   # CTRL-E           end of line    end of line
+18:27,85.               # ESC U            line up
+18:27,117.              # ESC u            line up
+19:27,68.               # ESC D            line down
+19:27,100.              # ESC d            line down
+20:27,86.               # ESC V            page up        page up
+20:27,118.              # ESC v            page up        page up
+21:27,87.               # ESC W            page down      page down
+21:27,119.              # ESC W            page down      page down
+26:26.                  # CTRL-Z           enter file
+27:24.                  # CTRL-X           exit file
+28:23.                  # CTRL-W           refresh        refresh
+29:27,70.               # ESC F            change file
+29:27,102.              # ESC f            change file
+31:27,88.               # ESC X            finish
+34:27,72.               # ESC H            help           help
+34:27,104.              # ESC h            help           help
+36:27,65.               # ESC A            get address
+36:27,97.               # ESC a            get address
+39:7.                   # CTRL-G           goto line
+40:27,48.               # ESC 0            backtrace
+41:27,49.               # ESC 1            inspect
+41:9.                   # CTRL-I           inspect
+42:27,50.               # ESC 2            channel
+43:27,51.               # ESC 3            top
+44:27,52.               # ESC 4            retrace
+45:27,53.               # ESC 5            relocate
+46:27,54.               # ESC 6            info
+47:27,55.               # ESC 7            modify
+48:27,56.               # ESC 8            resume
+49:27,57.               # ESC 9            monitor
+50:27,79.               # ESC O            word left
+50:27,111.              # ESC o            word left
+51:27,80.               # ESC P            word right
+51:27,112.              # ESC p            word right
+55:27,60.               # ESC <            top of file
+56:27,62.               # ESC >            end of file
+62:27,116.              # ESC t            toggle hex
+62:27,84.               # ESC T            toggle hex
+65:27,67.               # ESC C            continue from
+65:27,99.               # ESC c            continue from
+66:2.                   # CTRL-B           toggle break
+67:6.                   # CTRL-F           search (Find)
+end of keyboard section
+
+#  idebug key that isn't really part of iterm but its here all the same !
+#
+#              INTERRUPT      CTRL A    --  IDEBUG
+
+#   THAT'S ALL FOLKS

@@ -10,6 +10,7 @@
 #include "linkops.h"
 #include "c011.h"
 #include <string.h>
+#include <unistd.h>
 
 typedef int LINK;
 
@@ -55,7 +56,8 @@ C011WriteLink(LINK LinkId, char *Buffer, unsigned Count, int Timeout)
 int
 C011ResetLink(LINK LinkId)
 {
-    c011_reset();
+	c011_reset();
+	sleep(2);	//WX reset delay
     return SUCCEEDED;
 }
 
