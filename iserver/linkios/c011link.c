@@ -18,6 +18,7 @@ LINK
 C011OpenLink(char *Name)
 {
 	c011_init();
+	c011_set_byte_mode();
     return 1;
 }
 
@@ -33,7 +34,8 @@ C011ReadLink(LINK LinkId, char *Buffer, unsigned Count, int Timeout)
 	int result;
 
 	/* Read into buffer */
-	result = c011_read_bytes( Buffer, Count, Timeout );
+	// 100 10ths of a second in a millisecond
+	result = c011_read_bytes( Buffer, Count, Timeout*100 );
 	if (result >= 0) {
 	    return result;
 	} else {
@@ -45,7 +47,8 @@ int
 C011WriteLink(LINK LinkId, char *Buffer, unsigned Count, int Timeout)
 {
 	int result;
-	result = c011_write_bytes (Buffer, Count, Timeout);
+	// 100 10ths of a second in a millisecond
+	result = c011_write_bytes (Buffer, Count, Timeout * 100);
 	if (result >= 0) {
 	    return result;
 	} else {
