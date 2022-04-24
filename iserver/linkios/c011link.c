@@ -76,7 +76,7 @@ C011AnalyseLink(LINK LinkId)
 int
 C011TestError(LINK LinkId)
 {
-    return ER_LINK_CANT;
+    return c011_read_error_pin();
 }
 
 int

@@ -332,3 +332,10 @@ uint8_t c011_read_output_status(void) {
     byte = read_c011();
     return byte;
 }
+
+uint8_t c011_read_error_pin(void) {
+    uint32_t pins = bcm2835_peri_read_nb(gpio_lev);
+    uint32_t state = pins & (1<<ERROR);
+    printf ("\nerror=%d\n",state);
+    return state!=0;
+}
