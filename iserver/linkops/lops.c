@@ -214,29 +214,15 @@ unsigned char *buffer;
 unsigned long num_bytes;
 enum ErrorModes errormode;
 {
-  unsigned long bytes_to_go;
-  unsigned int bytes_to_write;
   int sent, result;
   
-#define LINKIOFRAGSIZE 32767
-  /* fragment into several write operations because of b016 linkio bugs */
   DebugMessage (fprintf (stderr, "[LOPS_BootWrite\n") ); 
   
-  bytes_to_go = num_bytes;
-  while (bytes_to_go > 0L) {
-    if (bytes_to_go > LINKIOFRAGSIZE) {
-      bytes_to_write = LINKIOFRAGSIZE;
-    } else {
-      bytes_to_write = (unsigned int) bytes_to_go;
-    }
-    DebugMessage ( fprintf (stderr, "Debug       : writing [%d] bytes\n", bytes_to_write) );
-    sent = WriteLink ((int) con_id, (char *) buffer, bytes_to_write, IOBIG_TIMEOUT);
-    if ((unsigned long) sent != bytes_to_write) {
-      (void) sprintf (lnkops_errorstring, " : module [lops.c], function [LOPS_BootWrite]\n -> writelink failed = [%d]\n", sent);
-      return (STATUS_LINK_FATAL);
-    }else {
-      bytes_to_go -= sent;
-    }
+  DebugMessage ( fprintf (stderr, "Debug       : writing [%d] bytes\n", num_bytes) );
+  sent = WriteLink ((int) con_id, (char *) buffer, num_bytes, IOBIG_TIMEOUT);
+  if ((unsigned long) sent != num_bytes) {
+    (void) sprintf (lnkops_errorstring, " : module [lops.c], function [LOPS_BootWrite]\n -> writelink failed = [%d]\n", sent);
+    return (STATUS_LINK_FATAL);
   }
   
   if (errormode == ERRORdetect) {

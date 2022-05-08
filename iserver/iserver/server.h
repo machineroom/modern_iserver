@@ -26,7 +26,7 @@ static char Copyright[] = "Copyright INMOS Limited 1988,1990,1991.\n";
                                                                          
 #define MAX_ITEM_SIZE             1024
 
-#define BOOT_BUFFER_LENGTH        (1024 * 8)
+#define BOOT_BUFFER_LENGTH        (1024 * 1024)
 
 #define DEFAULT_CORE_SIZE         (1024 * 8)    /* peeked at analyse  */
 
